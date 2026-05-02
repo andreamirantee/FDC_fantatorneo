@@ -1,0 +1,9 @@
+[project]
+name = "fdc-fantatorneo-backend"
+version = "0.1.0"
+description = "Backend FastAPI + Supabase per FDC Fantatorneo"
+requires-python = ">=3.11,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

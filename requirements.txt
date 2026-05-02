@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+supabase
+PyJWT
+httpx
+pytest
+# Per connessione diretta a Postgres (opzionale, ma consigliato)
+psycopg2-binary
+sqlmodel
