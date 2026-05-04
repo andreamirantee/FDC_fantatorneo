@@ -115,8 +115,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
         profile_data = None
         if client is not None:
             try:
+                # Cerca il profilo
                 user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
                 profile_data = user_profile.data[0] if user_profile.data else None
+                
+                # Se non trovato, lo crea
                 if not profile_data:
                     create_payload = {
                         "auth_id": user_id,
@@ -128,13 +131,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
                     try:
                         created_profile = client.table("users").insert(create_payload).execute()
                         profile_data = created_profile.data[0] if created_profile.data else None
-                        if not profile_data:
-                            refetch = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).limit(1).execute()
-                            profile_data = refetch.data[0] if refetch.data else create_payload
                     except Exception:
-                        profile_data = create_payload
-
-                if profile_data is not None:
+                        pass
+                    
+                    # Se insert non ha ritornato dati, refetch
+                    if not profile_data:
+                        user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
+                        profile_data = user_profile.data[0] if user_profile.data else None
+                
+                # Se il profilo è presente e ha un id, assicura team
+                if profile_data and profile_data.get("id"):
                     try:
                         profile_data = _ensure_profile_team(client, profile_data)
                     except Exception:
@@ -142,31 +148,33 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
             except Exception:
                 profile_data = None
 
-        if profile_data is None and client is not None:
-            try:
-                rescue_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).limit(1).execute()
-                profile_data = rescue_profile.data[0] if rescue_profile.data else {
-                    "auth_id": user_id,
-                    "email": email,
-                    "name": display_name or (email.split("@")[0] if email else "User"),
-                    "surname": surname or None,
-                    "coins": 100,
-                    "team_id": None,
-                }
-                if isinstance(profile_data, dict):
-                    try:
-                        profile_data = _ensure_profile_team(client, profile_data)
-                    except Exception:
-                        pass
-            except Exception:
-                profile_data = {
-                    "auth_id": user_id,
-                    "email": email,
-                    "name": display_name or (email.split("@")[0] if email else "User"),
-                    "surname": surname or None,
-                    "coins": 100,
-                    "team_id": None,
-                }
+        # Se il profilo è ancora None o non ha un team_id, tenta il fallback di emergency
+        if not profile_data or not profile_data.get("team_id"):
+            if client is not None:
+                try:
+                    # Rescue: leggi il profilo una volta ancora
+                    user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
+                    if user_profile.data:
+                        profile_data = user_profile.data[0]
+                        # Se il profilo non ha team_id, assicura il team subito
+                        if not profile_data.get("team_id"):
+                            try:
+                                profile_data = _ensure_profile_team(client, profile_data)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+        
+        # Se il profilo è ancora None, crea un minimo fallback
+        if not profile_data:
+            profile_data = {
+                "auth_id": user_id,
+                "email": email,
+                "name": display_name or (email.split("@")[0] if email else "User"),
+                "surname": surname or None,
+                "coins": 100,
+                "team_id": None,
+            }
 
         team_id = profile_data.get("team_id") if isinstance(profile_data, dict) else None
 
