@@ -307,8 +307,10 @@ def buy_participant(
     if not participant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
 
-    # Usa prezzo fornito o fallback al costo base del partecipante.
-    price = payload.price if payload.price is not None else int(participant.get("cost") or 0)
+    # Usa sempre il costo base del partecipante (server-side).
+    price = int(participant.get("cost") or 0)
+    if price <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid participant cost")
 
     # Protezione: valida crediti disponibili prima di procedere.
     validate_team_credits(client, payload.buyer_team_id, price)
@@ -421,8 +423,10 @@ def sell_participant(
     if not active_ownership.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Participant is not currently owned by seller team")
 
-    # Usa prezzo fornito o fallback al costo base del partecipante.
-    price = payload.price if payload.price is not None else int(participant.get("cost") or 0)
+    # Usa sempre il costo base del partecipante (server-side).
+    price = int(participant.get("cost") or 0)
+    if price <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid participant cost")
 
     try:
         # Chiudi record proprietà corrente: imposta released_at a now (NULL -> timestamp = inattivo).

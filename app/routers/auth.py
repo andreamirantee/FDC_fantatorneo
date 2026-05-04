@@ -57,7 +57,7 @@ def _ensure_user_team_assignment(client, user_row: dict, preferred_name: str | N
             if desired_team_name:
                 update_payload["name"] = desired_team_name
             current_balance = linked_row.get("balance_credits")
-            if current_balance is None or int(current_balance or 0) <= 0:
+            if current_balance is None:
                 update_payload["balance_credits"] = 100
             client.table("teams").update(update_payload).eq("id", int(team_id)).execute()
             return int(team_id)
@@ -73,7 +73,7 @@ def _ensure_user_team_assignment(client, user_row: dict, preferred_name: str | N
     if existing_team.data:
         team_id = int(existing_team.data[0]["id"])
         current_balance = existing_team.data[0].get("balance_credits")
-        if current_balance is None or int(current_balance or 0) <= 0:
+        if current_balance is None:
             client.table("teams").update({"balance_credits": 100}).eq("id", team_id).execute()
     else:
         team_name = desired_team_name

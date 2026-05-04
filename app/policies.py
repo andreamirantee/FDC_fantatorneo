@@ -94,10 +94,6 @@ def validate_team_credits(client: Any, team_id: int, required_amount: int) -> di
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
         
         current_balance = int(team_data.get("balance_credits") or 0)
-
-        if current_balance <= 0:
-            client.table("teams").update({"balance_credits": 100}).eq("id", team_id).execute()
-            current_balance = 100
         
         if current_balance < required_amount:
             raise HTTPException(

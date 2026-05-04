@@ -54,7 +54,7 @@ def _ensure_profile_team(client, profile_data: dict | None) -> dict | None:
         if linked_row and (linked_row.get("owner_user_id") in (None, user_db_id)):
             update_payload = {"owner_user_id": user_db_id, "name": desired_team_name}
             current_balance = linked_row.get("balance_credits")
-            if current_balance is None or int(current_balance or 0) <= 0:
+            if current_balance is None:
                 update_payload["balance_credits"] = 100
             client.table("teams").update(update_payload).eq("id", int(existing_user_team_id)).execute()
             profile_data["team_id"] = int(existing_user_team_id)
@@ -73,7 +73,7 @@ def _ensure_profile_team(client, profile_data: dict | None) -> dict | None:
         team_id = int(existing_team.data[0]["id"])
         update_payload = {"name": desired_team_name}
         current_balance = existing_team.data[0].get("balance_credits")
-        if current_balance is None or int(current_balance or 0) <= 0:
+        if current_balance is None:
             update_payload["balance_credits"] = 100
         client.table("teams").update(update_payload).eq("id", team_id).execute()
     else:

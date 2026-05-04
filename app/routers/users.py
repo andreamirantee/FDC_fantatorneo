@@ -64,7 +64,7 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                             )
                             if team_row.data:
                                 current_balance = team_row.data[0].get("balance_credits")
-                                if current_balance is None or int(current_balance or 0) <= 0:
+                                if current_balance is None:
                                     client.table("teams").update({"balance_credits": 100}).eq("id", team_id).execute()
                         except Exception:
                             pass

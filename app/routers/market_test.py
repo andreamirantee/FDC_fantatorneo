@@ -688,11 +688,10 @@ def serve_market_test():
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${{authToken}}`
                     }},
-                    body: JSON.stringify({{
+                    body: JSON.stringify({
                         buyer_team_id: currentTeamId,
-                        participant_id: participantId,
-                        price: cost
-                    }})
+                        participant_id: participantId
+                    })
                 }});
                 
                 const result = await response.json();
@@ -721,11 +720,10 @@ def serve_market_test():
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${{authToken}}`
                     }},
-                    body: JSON.stringify({{
+                    body: JSON.stringify({
                         seller_team_id: currentTeamId,
-                        participant_id: participantId,
-                        price: cost
-                    }})
+                        participant_id: participantId
+                    })
                 }});
                 
                 const result = await response.json();

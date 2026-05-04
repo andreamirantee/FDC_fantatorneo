@@ -41,7 +41,8 @@ def list_teams(client=Depends(get_supabase_client)):
         rows = response.data or []
         for row in rows:
             current_balance = row.get("balance_credits")
-            if current_balance is None or int(current_balance or 0) <= 0:
+            total_cost = int(row.get("total_cost") or 0)
+            if current_balance is None or (int(current_balance or 0) == 0 and total_cost == 0):
                 try:
                     client.table("teams").update({"balance_credits": 100}).eq("id", row.get("id")).execute()
                     row["balance_credits"] = 100
