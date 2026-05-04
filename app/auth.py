@@ -190,6 +190,22 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
             }
 
         team_id = profile_data.get("team_id") if isinstance(profile_data, dict) else None
+        
+        # FALLBACK ESTREMO: Se team_id è ancora NULL ma abbiamo user_db_id, tenta un UPDATE forzato
+        if not team_id and client is not None and profile_data and profile_data.get("id"):
+            try:
+                user_db_id = profile_data.get("id")
+                # Cerca un team del proprietario
+                team_search = client.table("teams").select("id").eq("owner_user_id", user_db_id).limit(1).execute()
+                if team_search.data:
+                    team_id_found = team_search.data[0].get("id")
+                    # UPDATE forzato
+                    update_res = client.table("users").update({"team_id": team_id_found}).eq("id", user_db_id).execute()
+                    if update_res.data:
+                        team_id = team_id_found
+                        profile_data["team_id"] = team_id_found
+            except Exception:
+                pass
 
         return {
             "auth_id": user_id,
