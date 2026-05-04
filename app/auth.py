@@ -162,21 +162,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
                         if not profile_data.get("team_id") and user_db_id:
                             try:
                                 team_search = client.table("teams").select("id").eq("owner_user_id", user_db_id).limit(1).execute()
+                                print(f"DEBUG: Team search for user {user_db_id} returned: {team_search.data}")
                                 if team_search.data:
                                     team_id_found = team_search.data[0].get("id")
                                     # Aggiorna il users.team_id direttamente
-                                    client.table("users").update({"team_id": team_id_found}).eq("id", user_db_id).execute()
+                                    update_result = client.table("users").update({"team_id": team_id_found}).eq("id", user_db_id).execute()
+                                    print(f"DEBUG: Updated users.team_id to {team_id_found}, result: {update_result.data}")
                                     profile_data["team_id"] = team_id_found
                                 else:
+                                    print(f"DEBUG: No team found for user {user_db_id}, creating new team...")
                                     # Se nessun team esiste, assicura il team
                                     profile_data = _ensure_profile_team(client, profile_data)
-                            except Exception:
+                            except Exception as e:
+                                print(f"DEBUG: Exception in team search/update: {e}")
                                 try:
                                     profile_data = _ensure_profile_team(client, profile_data)
                                 except Exception:
                                     pass
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"DEBUG: Exception in emergency rescue: {e}")
         
         # Se il profilo è ancora None, crea un minimo fallback
         if not profile_data:
