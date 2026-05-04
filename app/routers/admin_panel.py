@@ -116,9 +116,9 @@ def serve_admin_panel():
 							<label>Sport</label>
 							<select id="squadSport" required onchange="updateCost()">
 								<option value="">Seleziona sport</option>
-								<option value="Calcio">Calcio (€35)</option>
-								<option value="Pallavolo">Pallavolo (€25)</option>
-								<option value="Padel">Padel (€20)</option>
+								<option value="Calcio">Calcio (35 DomeCoin)</option>
+								<option value="Pallavolo">Pallavolo (25 DomeCoin)</option>
+								<option value="Padel">Padel (20 DomeCoin)</option>
 							</select>
 						</div>
 						<div class="form-group">
@@ -522,7 +522,7 @@ def serve_admin_panel():
 						<td>${s.id}</td>
 						<td>${s.name || 'N/A'}</td>
 						<td>${s.role || '-'}</td>
-						<td>€${s.cost || 0}</td>
+						<td>${s.cost || 0} DomeCoin</td>
 						<td>${s.score || 0}</td>
 					</tr>
 				`).join('');
@@ -552,7 +552,7 @@ def serve_admin_panel():
 						<td>${t.id}</td>
 						<td>${t.name || 'N/A'}</td>
 						<td>${t.score || 0}</td>
-						<td>€${t.total_cost || 0}</td>
+						<td>${t.total_cost || 0} DomeCoin</td>
 						<td>${t.balance_credits || 0}</td>
 					</tr>
 				`).join('');

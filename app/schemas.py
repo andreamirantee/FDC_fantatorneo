@@ -32,6 +32,7 @@ class TeamRead(TeamBase):
     id: int
     total_cost: int = 0
     score: int = 0
+    balance_credits: int = 100
 
 
 # ============================================================================

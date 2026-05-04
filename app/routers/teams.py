@@ -32,8 +32,22 @@ def list_teams(client=Depends(get_supabase_client)):
         return []
 
     try:
-        response = client.table("teams").select("id, name, owner_user_id, total_cost, score").order("id").execute()
-        return response.data or []
+        response = (
+            client.table("teams")
+            .select("id, name, owner_user_id, total_cost, score, balance_credits")
+            .order("id")
+            .execute()
+        )
+        rows = response.data or []
+        for row in rows:
+            current_balance = row.get("balance_credits")
+            if current_balance is None or int(current_balance or 0) <= 0:
+                try:
+                    client.table("teams").update({"balance_credits": 100}).eq("id", row.get("id")).execute()
+                    row["balance_credits"] = 100
+                except Exception:
+                    pass
+        return rows
     except Exception:
         # Degradazione corretta: se database o policy non pronti, ritorna lista vuota.
         return []
@@ -56,7 +70,9 @@ def create_team(payload: TeamCreate, client=Depends(get_supabase_client)):
     if client is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
 
-    response = client.table("teams").insert({"name": payload.name, "owner_user_id": payload.owner_user_id}).execute()
+    response = client.table("teams").insert(
+        {"name": payload.name, "owner_user_id": payload.owner_user_id, "balance_credits": 100}
+    ).execute()
     if not response.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to create team")
 

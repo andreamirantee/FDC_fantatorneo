@@ -46,7 +46,7 @@ def _ensure_user_team_assignment(client, user_row: dict, preferred_name: str | N
     if team_id:
         linked_team = (
             client.table("teams")
-            .select("id, owner_user_id, name")
+            .select("id, owner_user_id, name, balance_credits")
             .eq("id", team_id)
             .limit(1)
             .execute()
@@ -56,12 +56,15 @@ def _ensure_user_team_assignment(client, user_row: dict, preferred_name: str | N
             update_payload = {"owner_user_id": user_db_id}
             if desired_team_name:
                 update_payload["name"] = desired_team_name
+            current_balance = linked_row.get("balance_credits")
+            if current_balance is None or int(current_balance or 0) <= 0:
+                update_payload["balance_credits"] = 100
             client.table("teams").update(update_payload).eq("id", int(team_id)).execute()
             return int(team_id)
 
     existing_team = (
         client.table("teams")
-        .select("id, name")
+        .select("id, name, balance_credits")
         .eq("owner_user_id", user_db_id)
         .limit(1)
         .execute()
@@ -69,9 +72,14 @@ def _ensure_user_team_assignment(client, user_row: dict, preferred_name: str | N
 
     if existing_team.data:
         team_id = int(existing_team.data[0]["id"])
+        current_balance = existing_team.data[0].get("balance_credits")
+        if current_balance is None or int(current_balance or 0) <= 0:
+            client.table("teams").update({"balance_credits": 100}).eq("id", team_id).execute()
     else:
         team_name = desired_team_name
-        created_team = client.table("teams").insert({"name": team_name, "owner_user_id": user_db_id}).execute()
+        created_team = client.table("teams").insert(
+            {"name": team_name, "owner_user_id": user_db_id, "balance_credits": 100}
+        ).execute()
         if not created_team.data:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to create default team")
         team_id = int(created_team.data[0]["id"])

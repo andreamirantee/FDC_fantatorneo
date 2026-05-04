@@ -445,7 +445,7 @@ def serve_market_test():
         
         function logout() {{
             localStorage.removeItem('fdc_access_token');
-            window.location.href = '/playground/auth';
+            window.location.href = '/auth';
         }}
         
         async function loadRanking() {{
@@ -481,7 +481,7 @@ def serve_market_test():
                                             <td>${{i + 1}}</td>
                                             <td>${{team.name || 'Squadra ' + team.id}}</td>
                                             <td>${{team.score}}</td>
-                                            <td>€${{team.total_cost}}</td>
+                                            <td>${{team.total_cost}} DomeCoin</td>
                                         </tr>
                                     `).join('') : '<tr><td colspan="4" style="text-align:center; color:#999;">Nessuna squadra</td></tr>'}}
                                 </tbody>
@@ -518,7 +518,7 @@ def serve_market_test():
             const detail = String(payload?.detail || 'Operazione non riuscita');
 
             if (response.status === 402) {{
-                return 'Non hai crediti sufficienti per comprare questa squadra. ' + detail;
+                return 'Non hai DomeCoin sufficienti per comprare questa squadra. ' + detail;
             }}
             if (response.status === 401) {{
                 return 'Sessione non valida o profilo utente non trovato. Fai di nuovo login. ' + detail;
@@ -654,7 +654,7 @@ def serve_market_test():
                 <tr>
                     <td>${{p.name || 'N/A'}}</td>
                     <td>${{p.role || 'N/A'}}</td>
-                    <td>€${{p.cost || 0}}</td>
+                    <td>${{p.cost || 0}} DomeCoin</td>
                     <td>
                         ${{isOwnedByCurrentUser(p)
                             ? `<button class="btn btn-sell" onclick="sellParticipant(${{p.id}}, ${{p.cost || 0}}, 'status')">Vendi</button>`
@@ -697,7 +697,7 @@ def serve_market_test():
                 
                 const result = await response.json();
                 if (response.ok) {{
-                    showStatus(statusTarget || 'status', `✓ Acquisto riuscito! Squadra acquistata per €${{cost}}. Non comparirà più nel mercato.`, 'success');
+                    showStatus(statusTarget || 'status', `✓ Acquisto riuscito! Squadra acquistata per ${{cost}} DomeCoin. Non comparirà più nel mercato.`, 'success');
                     loadParticipants();
                     loadMyScore();
                 }} else {{

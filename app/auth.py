@@ -45,21 +45,25 @@ def _ensure_profile_team(client, profile_data: dict | None) -> dict | None:
     if existing_user_team_id:
         linked_team = (
             client.table("teams")
-            .select("id, owner_user_id")
+            .select("id, owner_user_id, balance_credits")
             .eq("id", existing_user_team_id)
             .limit(1)
             .execute()
         )
         linked_row = linked_team.data[0] if linked_team.data else None
         if linked_row and (linked_row.get("owner_user_id") in (None, user_db_id)):
-            client.table("teams").update({"owner_user_id": user_db_id, "name": desired_team_name}).eq("id", int(existing_user_team_id)).execute()
+            update_payload = {"owner_user_id": user_db_id, "name": desired_team_name}
+            current_balance = linked_row.get("balance_credits")
+            if current_balance is None or int(current_balance or 0) <= 0:
+                update_payload["balance_credits"] = 100
+            client.table("teams").update(update_payload).eq("id", int(existing_user_team_id)).execute()
             profile_data["team_id"] = int(existing_user_team_id)
             return profile_data
 
     team_id = None
     existing_team = (
         client.table("teams")
-        .select("id")
+        .select("id, balance_credits")
         .eq("owner_user_id", user_db_id)
         .limit(1)
         .execute()
@@ -67,9 +71,15 @@ def _ensure_profile_team(client, profile_data: dict | None) -> dict | None:
 
     if existing_team.data:
         team_id = int(existing_team.data[0]["id"])
-        client.table("teams").update({"name": desired_team_name}).eq("id", team_id).execute()
+        update_payload = {"name": desired_team_name}
+        current_balance = existing_team.data[0].get("balance_credits")
+        if current_balance is None or int(current_balance or 0) <= 0:
+            update_payload["balance_credits"] = 100
+        client.table("teams").update(update_payload).eq("id", team_id).execute()
     else:
-        created_team = client.table("teams").insert({"name": desired_team_name, "owner_user_id": user_db_id}).execute()
+        created_team = client.table("teams").insert(
+            {"name": desired_team_name, "owner_user_id": user_db_id, "balance_credits": 100}
+        ).execute()
         if created_team.data:
             team_id = int(created_team.data[0]["id"])
 
@@ -115,9 +125,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
         profile_data = None
         if client is not None:
             try:
-                # Cerca il profilo - seleziona tutti i campi per assicurarsi di avere team_id
+                # Cerca il profilo per auth_id
                 user_profile = client.table("users").select("*").eq("auth_id", user_id).execute()
                 profile_data = user_profile.data[0] if user_profile.data else None
+
+                # Fallback: se non trovato per auth_id, prova a linkare via email
+                if not profile_data and email:
+                    email_profile = client.table("users").select("*").eq("email", email).limit(1).execute()
+                    profile_data = email_profile.data[0] if email_profile.data else None
+                    if profile_data and profile_data.get("id"):
+                        # Backfill auth_id per riallineare utenti Auth e DB app
+                        client.table("users").update({"auth_id": user_id}).eq("id", profile_data.get("id")).execute()
+                        profile_data["auth_id"] = user_id
                 
                 # Se non trovato, lo crea
                 if not profile_data:

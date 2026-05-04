@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 router = APIRouter(tags=["Auth Test"])
 
 
-@router.get("/playground/auth", response_class=HTMLResponse)
+@router.get("/auth", response_class=HTMLResponse)
 def auth_playground():
     """Fornisci pagina HTML testing auth interattiva.
     
