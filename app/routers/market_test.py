@@ -565,11 +565,11 @@ def serve_market_test():
                 }}
 
                 const payload = await response.json();
-                currentUserProfile = payload.current_user || {{}};
-                const profile = currentUserProfile.profile || {{}};
+                currentUserProfile = payload || {{}};
+                const profile = (payload && payload.profile) || {{}};
                 currentUserId = profile.id || null;
 
-                const teamId = payload.current_user.team_id || profile.team_id || currentTeamId;
+                const teamId = (payload && payload.team_id) || profile.team_id || null;
                 currentTeamId = teamId;
 
                 const userEmail = currentUserProfile.email || 'Utente';
