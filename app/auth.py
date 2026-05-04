@@ -115,8 +115,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
         profile_data = None
         if client is not None:
             try:
-                # Cerca il profilo
-                user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
+                # Cerca il profilo - seleziona tutti i campi per assicurarsi di avere team_id
+                user_profile = client.table("users").select("*").eq("auth_id", user_id).execute()
                 profile_data = user_profile.data[0] if user_profile.data else None
                 
                 # Se non trovato, lo crea
@@ -136,7 +136,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
                     
                     # Se insert non ha ritornato dati, refetch
                     if not profile_data:
-                        user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
+                        user_profile = client.table("users").select("*").eq("auth_id", user_id).execute()
                         profile_data = user_profile.data[0] if user_profile.data else None
                 
                 # Se il profilo è presente e ha un id, assicura team
@@ -153,7 +153,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), client=Depends(get_sup
             if client is not None:
                 try:
                     # Rescue: leggi il profilo una volta ancora
-                    user_profile = client.table("users").select("id, auth_id, name, surname, email, coins, team_id").eq("auth_id", user_id).execute()
+                    user_profile = client.table("users").select("*").eq("auth_id", user_id).execute()
                     if user_profile.data:
                         profile_data = user_profile.data[0]
                         # Se il profilo non ha team_id, assicura il team subito
