@@ -9,6 +9,7 @@ Gestisce:
 Step 1 di FDC Fantatorneo: sistema autenticazione.
 """
 
+import os
 from pydantic import BaseModel, EmailStr
 from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
@@ -122,6 +123,26 @@ class ResendConfirmationRequest(BaseModel):
         email: Indirizzo email a cui inviare link di conferma.
     """
     email: EmailStr
+
+
+class RequestPasswordResetRequest(BaseModel):
+    """Richiesta reset password: email utente.
+    
+    Attributes:
+        email: Email registrata utente per cui richiedere reset.
+    """
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Completamento reset password: token e nuova password.
+    
+    Attributes:
+        token: Token di reset inviato via email.
+        password: Nuova password per l'utente.
+    """
+    token: str
+    password: str
 
 
 @router.post("/register")
@@ -394,7 +415,115 @@ def resend_confirmation(payload: ResendConfirmationRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
 
-@router.get("/me")
+@router.post("/request-password-reset")
+def request_password_reset(payload: RequestPasswordResetRequest):
+    """Richiedi email di reset password.
+    
+    Step 1d: Invia link di reset password all'email fornita.
+    Utilizza l'endpoint recovery di Supabase per generare e inviare il link.
+    
+    Args:
+        payload: RequestPasswordResetRequest con email.
+    
+    Returns:
+        dict con status e messaggio.
+    
+    Raises:
+        HTTPException: 400 per email invalida, 429 per rate limit,
+                      503 se Supabase indisponibile.
+    """
+    try:
+        auth_url, auth_key = get_supabase_auth_credentials()
+        if not auth_url or not auth_key:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase auth not configured")
+
+        recovery_url = f"{auth_url}/recover"
+        headers = {"apikey": auth_key, "Authorization": f"Bearer {auth_key}", "Content-Type": "application/json"}
+        
+        # Per password reset, il redirect_to deve puntare a /reset-password (non a /auth).
+        # Supabase invierà il link con il token nel fragment: /reset-password#access_token=...
+        redirect_to = get_supabase_email_redirect_to()  # Legge da env SUPABASE_EMAIL_REDIRECT_TO
+        if redirect_to:
+            # Sostituisci il path di default /auth con /reset-password
+            redirect_to = redirect_to.replace("/auth", "/reset-password")
+        else:
+            redirect_to = "http://127.0.0.1:8000/reset-password"
+        
+        request_params = {"redirect_to": redirect_to}
+        
+        with httpx.Client(timeout=20.0) as http_client:
+            auth_response = http_client.post(
+                recovery_url,
+                json={"email": payload.email},
+                headers=headers,
+                params=request_params,
+            )
+
+        if auth_response.status_code >= 400:
+            error_payload = auth_response.json()
+            if "rate limit" in str(error_payload.get("msg", "")).lower():
+                raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error_payload.get("msg") or "Troppe richieste. Riprova tra un po'.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_payload.get("msg") or error_payload.get("error_description") or auth_response.text)
+
+        return {
+            "status": "ok",
+            "message": "Email di reset inviata. Controlla la posta e clicca il link per resettare la password.",
+        }
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest):
+    """Completa il reset della password con token e nuova password.
+    
+    Step 1d (completion): Permette all'utente di impostare una nuova password
+    utilizzando il token ricevuto via email.
+    
+    Args:
+        payload: ResetPasswordRequest con token (access_token) e nuova password.
+    
+    Returns:
+        dict con status e messaggio.
+    
+    Raises:
+        HTTPException: 400 per token invalido/scaduto,
+                      503 se Supabase indisponibile.
+    """
+    try:
+        auth_url, auth_key = get_supabase_auth_credentials()
+        if not auth_url or not auth_key:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase auth not configured")
+
+        # Il token da frontend è già un access_token valido fornito da Supabase
+        # nel link di recovery. Lo usiamo direttamente con Bearer auth.
+        access_token = payload.token
+        
+        # Aggiorna la password usando il token dal recovery link
+        update_url = f"{auth_url}/user"
+        update_headers = {"apikey": auth_key, "Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        
+        with httpx.Client(timeout=20.0) as http_client:
+            update_response = http_client.put(
+                update_url,
+                json={"password": payload.password},
+                headers=update_headers,
+            )
+
+        if update_response.status_code >= 400:
+            error_payload = update_response.json()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_payload.get("msg") or "Token scaduto o password non valida.")
+
+        return {
+            "status": "ok",
+            "message": "Password resettata con successo. Accedi con la nuova password.",
+        }
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 def read_current_user(current_user=Depends(get_current_user)):
     """Ottieni profilo utente autenticato corrente.
     

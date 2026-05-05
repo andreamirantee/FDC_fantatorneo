@@ -46,6 +46,7 @@ class ParticipantBase(BaseModel):
     cost: int | None = None
     team_id: int | None = None
     available: bool | None = None
+    composed_of: str | None = None
 
 
 class ParticipantCreate(ParticipantBase):
@@ -127,8 +128,19 @@ class RankingItem(BaseModel):
     id: int
     name: str | None = None
     sport: str | None = None
+    group_code: str | None = None
     score: int = 0
+    points: int = 0
     total_cost: int = 0
+    matches_played: int = 0
+    wins: int = 0
+    losses: int = 0
+    draws: int = 0
+    goals_for: int = 0
+    goals_against: int = 0
+    sets_won: int = 0
+    sets_lost: int = 0
+    composed_of: str | None = None
 
 
 class TeamRosterItem(BaseModel):
@@ -184,3 +196,25 @@ class MatchResult(BaseModel):
     away_squad_id: int  # ID squadra away
     home_score: int     # Punti/goal squadra home
     away_score: int     # Punti/goal squadra away
+    stage: str | None = None
+
+
+class AdminUpdateParticipantRequest(BaseModel):
+    """Richiesta per aggiornare dati partecipante in admin."""
+    score: int | None = None
+    matches_played: int | None = None
+    wins: int | None = None
+    losses: int | None = None
+    draws: int | None = None
+    group_code: str | None = None
+    goals_for: int | None = None
+    goals_against: int | None = None
+    sets_won: int | None = None
+    sets_lost: int | None = None
+    composed_of: str | None = None
+
+
+class AdminUpdateTeamRequest(BaseModel):
+    """Richiesta per aggiornare dati team in admin."""
+    score: int | None = None
+    balance_credits: int | None = None

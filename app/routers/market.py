@@ -32,6 +32,8 @@ from ..policies import (
     verify_team_ownership,
 )
 from ..schemas import (
+    AdminUpdateParticipantRequest,
+    AdminUpdateTeamRequest,
     BuyParticipantRequest,
     MarketOperationResult,
     MarketTransactionItem,
@@ -100,7 +102,7 @@ def _build_participant_name_map(client, participant_ids: list[int]) -> dict[int,
 
 
 def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
-    """Distribuisce punti di una squadra a tutti i team owner che la possiedono.
+    """Distribuisce punti di una squadra ai team owner che la possiedono.
     
     Quando una squadra ottiene punti (da una partita), questi si aggiungono
     automaticamente ai team owner che possiedono quella squadra nel mercato.
@@ -110,14 +112,7 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
         squad_id: ID della squadra che ha ottenuto punti.
         points_delta: Punti da aggiungere (può essere negativo).
     """
-    # 1. Aggiungi punti alla squadra stessa
-    squad_res = client.table("participants").select("id, score").eq("id", squad_id).limit(1).execute()
-    if squad_res.data:
-        current_score = int(squad_res.data[0].get("score") or 0)
-        new_score = max(0, current_score + points_delta)
-        client.table("participants").update({"score": new_score}).eq("id", squad_id).execute()
-    
-    # 2. Trova tutti i team che possiedono questa squadra (active ownership)
+    # 1. Trova tutti i team che possiedono questa squadra (active ownership)
     ownership_res = (
         client.table("team_participants_history")
         .select("team_id")
@@ -126,7 +121,7 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
         .execute()
     )
     
-    # 3. Aggiungi punti ai team owner
+    # 2. Aggiungi punti ai team owner
     for ownership_row in (ownership_res.data or []):
         team_id = int(ownership_row["team_id"])
         team_res = client.table("teams").select("id, score").eq("id", team_id).limit(1).execute()
@@ -134,6 +129,115 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
             current_team_score = int(team_res.data[0].get("score") or 0)
             new_team_score = max(0, current_team_score + points_delta)
             client.table("teams").update({"score": new_team_score}).eq("id", team_id).execute()
+
+
+def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: int, scored: int, conceded: int, result: str = "win") -> None:
+    """Aggiorna statistiche squadra (participants) e punti classifica.
+    
+    result: "win", "loss", o "draw"
+    Per Calcio: goals_for/goals_against.
+    Per Pallavolo/Padel: sets_won/sets_lost (usa scored/conceded).
+    """
+    squad_res = (
+        client.table("participants")
+        .select("id, score, matches_played, goals_for, goals_against, sets_won, sets_lost, wins, losses, draws")
+        .eq("id", squad_id)
+        .limit(1)
+        .execute()
+    )
+    if not squad_res.data:
+        return
+
+    row = squad_res.data[0]
+    current_score = int(row.get("score") or 0)
+    matches_played = int(row.get("matches_played") or 0) + 1
+    update_payload = {
+        "score": max(0, current_score + points_delta),
+        "matches_played": matches_played,
+    }
+
+    # Traccia vittorie/sconfitte/pareggi
+    if result == "win":
+        update_payload["wins"] = int(row.get("wins") or 0) + 1
+    elif result == "loss":
+        update_payload["losses"] = int(row.get("losses") or 0) + 1
+    elif result == "draw":
+        update_payload["draws"] = int(row.get("draws") or 0) + 1
+
+    sport_key = (sport or "").strip().lower()
+    if sport_key == "calcio":
+        update_payload["goals_for"] = int(row.get("goals_for") or 0) + scored
+        update_payload["goals_against"] = int(row.get("goals_against") or 0) + conceded
+    else:
+        update_payload["sets_won"] = int(row.get("sets_won") or 0) + scored
+        update_payload["sets_lost"] = int(row.get("sets_lost") or 0) + conceded
+
+    try:
+        client.table("participants").update(update_payload).eq("id", squad_id).execute()
+    except Exception:
+        pass
+
+
+def _volley_match_points(home_score: int, away_score: int) -> tuple[int, int]:
+    if home_score > away_score:
+        return 3, 1
+    if away_score > home_score:
+        return 1, 3
+    return 2, 2
+
+
+def _compute_head_to_head_points(matches: list[dict], team_ids: set[int]) -> dict[int, int]:
+    points_map = {team_id: 0 for team_id in team_ids}
+    for match in matches:
+        home_id = match.get("home_squad_id")
+        away_id = match.get("away_squad_id")
+        if home_id in team_ids and away_id in team_ids:
+            home_score = int(match.get("home_score") or 0)
+            away_score = int(match.get("away_score") or 0)
+            home_points, away_points = _volley_match_points(home_score, away_score)
+            points_map[home_id] = points_map.get(home_id, 0) + home_points
+            points_map[away_id] = points_map.get(away_id, 0) + away_points
+    return points_map
+
+
+def _sort_group_teams(teams: list[dict], matches: list[dict]) -> list[dict]:
+    grouped: dict[int, list[dict]] = {}
+    for team in teams:
+        grouped.setdefault(int(team.get("points") or 0), []).append(team)
+
+    sorted_points = sorted(grouped.keys(), reverse=True)
+    ordered: list[dict] = []
+    for points in sorted_points:
+        tied = grouped[points]
+        if len(tied) == 1:
+            ordered.extend(tied)
+            continue
+
+        tied_ids = {int(t.get("id")) for t in tied if t.get("id") is not None}
+        head_to_head = _compute_head_to_head_points(matches, tied_ids)
+        tied_sorted = sorted(
+            tied,
+            key=lambda t: (
+                -head_to_head.get(int(t.get("id")), 0),
+                -int(t.get("sets_won") or 0),
+                int(t.get("sets_lost") or 0),
+                (t.get("name") or ""),
+            ),
+        )
+        ordered.extend(tied_sorted)
+
+    return ordered
+
+
+def _find_final_match(matches: list[dict], home_id: int | None, away_id: int | None) -> dict | None:
+    if home_id is None or away_id is None:
+        return None
+    for match in matches:
+        m_home = match.get("home_squad_id")
+        m_away = match.get("away_squad_id")
+        if {m_home, m_away} == {home_id, away_id}:
+            return match
+    return None
 
 
 @router.get("/ranking", response_model=list[RankingItem])
@@ -151,24 +255,181 @@ def get_ranking(client=Depends(get_supabase_client)):
     try:
         response = (
             client.table("participants")
-            .select("id, name, role, score, cost")
+            .select("id, name, role, score, cost, composed_of")
             .order("score", desc=True)
             .order("cost")
             .execute()
         )
         rows = response.data or []
+        
+        # Recupera statistiche se disponibili
+        participant_ids = [row.get("id") for row in rows]
+        stats_map = {}
+        if participant_ids:
+            try:
+                stats_res = client.table("participants").select(
+                    "id, group_code, matches_played, goals_for, goals_against, sets_won, sets_lost, wins, losses, draws"
+                ).in_("id", participant_ids).execute()
+                stats_map = {int(s["id"]): s for s in (stats_res.data or [])}
+            except Exception:
+                pass
+        
         return [
             {
                 "id": row.get("id"),
                 "name": row.get("name"),
                 "sport": row.get("role") or "Calcio",
+                "role": row.get("role") or "Calcio",
+                "group_code": stats_map.get(row.get("id"), {}).get("group_code"),
                 "score": int(row.get("score") or 0),
+                "points": int(row.get("score") or 0),
                 "total_cost": int(row.get("cost") or 0),
+                "matches_played": int(stats_map.get(row.get("id"), {}).get("matches_played") or 0),
+                "wins": int(stats_map.get(row.get("id"), {}).get("wins") or 0),
+                "losses": int(stats_map.get(row.get("id"), {}).get("losses") or 0),
+                "draws": int(stats_map.get(row.get("id"), {}).get("draws") or 0),
+                "goals_for": int(stats_map.get(row.get("id"), {}).get("goals_for") or 0),
+                "goals_against": int(stats_map.get(row.get("id"), {}).get("goals_against") or 0),
+                "sets_won": int(stats_map.get(row.get("id"), {}).get("sets_won") or 0),
+                "sets_lost": int(stats_map.get(row.get("id"), {}).get("sets_lost") or 0),
+                "composed_of": row.get("composed_of"),
             }
             for row in rows
         ]
-    except Exception:
+    except Exception as e:
+        print(f"Errore ranking: {e}")
         return []
+
+
+@router.get("/volley/structure")
+def get_volley_structure(client=Depends(get_supabase_client)):
+    """Ritorna classifiche pallavolo per gironi e accoppiamenti finali."""
+    empty = {
+        "groups": {"A": [], "B": []},
+        "finals": {"fifth_sixth": None, "third_fourth": None, "final": None},
+    }
+    if client is None:
+        return empty
+
+    try:
+        participants_res = (
+            client.table("participants")
+            .select("id, name, role, score, group_code, matches_played, wins, losses, draws, sets_won, sets_lost, composed_of")
+            .ilike("role", "pallavolo")
+            .execute()
+        )
+        participants = participants_res.data or []
+    except Exception:
+        return empty
+
+    teams = []
+    for row in participants:
+        teams.append(
+            {
+                "id": row.get("id"),
+                "name": row.get("name"),
+                "sport": row.get("role") or "Pallavolo",
+                "group_code": (row.get("group_code") or "").upper() or None,
+                "points": int(row.get("score") or 0),
+                "matches_played": int(row.get("matches_played") or 0),
+                "wins": int(row.get("wins") or 0),
+                "losses": int(row.get("losses") or 0),
+                "draws": int(row.get("draws") or 0),
+                "sets_won": int(row.get("sets_won") or 0),
+                "sets_lost": int(row.get("sets_lost") or 0),
+                "composed_of": row.get("composed_of"),
+            }
+        )
+
+    matches = []
+    try:
+        matches_res = (
+            client.table("matches")
+            .select(
+                "home_squad_id, away_squad_id, home_score, away_score, stage, group_code, created_at"
+            )
+            .ilike("sport", "pallavolo")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        matches = matches_res.data or []
+    except Exception:
+        matches = []
+
+    group_matches = [
+        m for m in matches if (m.get("stage") or "group") == "group"
+    ]
+    final_matches = [
+        m for m in matches if (m.get("stage") or "") == "final"
+    ]
+
+    def build_group(code: str) -> list[dict]:
+        group_code = code.upper()
+        group_teams = [t for t in teams if (t.get("group_code") or "") == group_code]
+        group_match_list = [
+            m for m in group_matches if (m.get("group_code") or "").upper() == group_code
+        ]
+        return _sort_group_teams(group_teams, group_match_list)
+
+    group_a = build_group("A")
+    group_b = build_group("B")
+
+    def pick_team(group_list: list[dict], index: int) -> dict | None:
+        return group_list[index] if len(group_list) > index else None
+
+    def build_final_pair(index: int) -> dict:
+        home = pick_team(group_a, index)
+        away = pick_team(group_b, index)
+        match = _find_final_match(
+            final_matches,
+            home.get("id") if home else None,
+            away.get("id") if away else None,
+        )
+        return {"home": home, "away": away, "match": match}
+
+    finals = {
+        "fifth_sixth": build_final_pair(2),
+        "third_fourth": build_final_pair(1),
+        "final": build_final_pair(0),
+    }
+
+    return {"groups": {"A": group_a, "B": group_b}, "finals": finals}
+
+
+@router.post("/ranking/reset", status_code=status.HTTP_200_OK)
+def reset_ranking(
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None)
+):
+    """Resetta punteggi e statistiche delle classifiche.
+
+    Protezione: richiede X-Admin-Token header.
+    """
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    try:
+        client.table("participants").update(
+            {
+                "score": 0,
+                "matches_played": 0,
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "goals_for": 0,
+                "goals_against": 0,
+                "sets_won": 0,
+                "sets_lost": 0,
+            }
+        ).execute()
+        client.table("teams").update({"score": 0}).execute()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to reset ranking")
+
+    return {"status": "ok", "message": "Ranking reset"}
 
 
 @router.post("/match", status_code=status.HTTP_200_OK)
@@ -202,37 +463,112 @@ def record_match(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
 
     # Verifica squadre esistono
-    home_squad_res = client.table("participants").select("id").eq("id", payload.home_squad_id).limit(1).execute()
-    away_squad_res = client.table("participants").select("id").eq("id", payload.away_squad_id).limit(1).execute()
+    home_squad_res = (
+        client.table("participants")
+        .select("id, role, group_code")
+        .eq("id", payload.home_squad_id)
+        .limit(1)
+        .execute()
+    )
+    away_squad_res = (
+        client.table("participants")
+        .select("id, role, group_code")
+        .eq("id", payload.away_squad_id)
+        .limit(1)
+        .execute()
+    )
     
     if not home_squad_res.data or not away_squad_res.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or both squads not found")
 
     try:
-        # Calcola punti in base al risultato
+        # Calcola punti in base al risultato e sport
         home_points = 0
         away_points = 0
-        
-        if payload.home_score > payload.away_score:
-            # Home vince
-            home_points = 3
-            away_points = 0
-        elif payload.away_score > payload.home_score:
-            # Away vince
-            away_points = 3
-            home_points = 0
+
+        home_role = (home_squad_res.data[0].get("role") or "Calcio").strip().lower()
+        away_role = (away_squad_res.data[0].get("role") or "Calcio").strip().lower()
+        sport_key = home_role or away_role or "calcio"
+
+        if sport_key == "calcio":
+            if payload.home_score > payload.away_score:
+                home_points = 3
+            elif payload.away_score > payload.home_score:
+                away_points = 3
+            else:
+                home_points = 1
+                away_points = 1
+        elif sport_key == "pallavolo":
+            if payload.home_score > payload.away_score:
+                home_points = 3
+                away_points = 1
+            elif payload.away_score > payload.home_score:
+                home_points = 1
+                away_points = 3
+            else:
+                home_points = 2
+                away_points = 2
         else:
-            # Pareggio
-            home_points = 1
-            away_points = 1
+            if payload.home_score > payload.away_score:
+                home_points = 1
+                away_points = 0
+            elif payload.away_score > payload.home_score:
+                home_points = 0
+                away_points = 1
+            else:
+                home_points = 1
+                away_points = 1
+
+        if payload.home_score > payload.away_score:
+            home_result = "win"
+            away_result = "loss"
+        elif payload.away_score > payload.home_score:
+            home_result = "loss"
+            away_result = "win"
+        else:
+            home_result = "draw"
+            away_result = "draw"
         
-        # Distribuisci punti alle squadre e ai loro team owner
+        stage = (payload.stage or "group").strip().lower()
+        if stage not in {"group", "final"}:
+            stage = "group"
+
+        home_group = home_squad_res.data[0].get("group_code")
+        away_group = away_squad_res.data[0].get("group_code")
+        match_group = None
+        if stage == "group" and sport_key == "pallavolo" and home_group and home_group == away_group:
+            match_group = home_group
+
+        # Aggiorna statistiche squadre e punti classifica
+        _apply_match_stats(
+            client,
+            payload.home_squad_id,
+            sport_key,
+            home_points,
+            payload.home_score,
+            payload.away_score,
+            home_result,
+        )
+        _apply_match_stats(
+            client,
+            payload.away_squad_id,
+            sport_key,
+            away_points,
+            payload.away_score,
+            payload.home_score,
+            away_result,
+        )
+
+        # Distribuisci punti ai team owner
         _distribute_squad_points(client, payload.home_squad_id, home_points)
         _distribute_squad_points(client, payload.away_squad_id, away_points)
         
         # Registra la partita nel database (se esiste una tabella matches)
         try:
             client.table("matches").insert({
+                "sport": sport_key,
+                "stage": stage,
+                "group_code": match_group,
                 "home_squad_id": payload.home_squad_id,
                 "away_squad_id": payload.away_squad_id,
                 "home_score": payload.home_score,
@@ -592,3 +928,132 @@ def get_market_transactions(limit: int = 50, client=Depends(get_supabase_client)
         )
 
     return result
+
+
+@router.post("/admin/participants/{participant_id}")
+def admin_update_participant(
+    participant_id: int,
+    payload: AdminUpdateParticipantRequest,
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None)
+):
+    """Aggiorna dati partecipante (admin only).
+    
+    Protezione: richiede X-Admin-Token header.
+    
+    Args:
+        participant_id: ID partecipante da aggiornare.
+        payload: Dati da aggiornare (parziali).
+        client: Dipendenza client Supabase.
+        x_admin_token: Token admin da header.
+    
+    Returns:
+        Messaggio conferma.
+    """
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+    
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+    
+    # Verifica partecipante esiste
+    participant_res = (
+        client.table("participants")
+        .select("id")
+        .eq("id", participant_id)
+        .limit(1)
+        .execute()
+    )
+    if not participant_res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
+    
+    # Costruisci update payload (solo campi forniti)
+    update_data = {}
+    if payload.score is not None:
+        update_data["score"] = max(0, payload.score)
+    if payload.matches_played is not None:
+        update_data["matches_played"] = max(0, payload.matches_played)
+    if payload.wins is not None:
+        update_data["wins"] = max(0, payload.wins)
+    if payload.losses is not None:
+        update_data["losses"] = max(0, payload.losses)
+    if payload.draws is not None:
+        update_data["draws"] = max(0, payload.draws)
+    if payload.group_code is not None:
+        group_value = payload.group_code.strip().upper() if payload.group_code else None
+        update_data["group_code"] = group_value
+    if payload.goals_for is not None:
+        update_data["goals_for"] = max(0, payload.goals_for)
+    if payload.goals_against is not None:
+        update_data["goals_against"] = max(0, payload.goals_against)
+    if payload.sets_won is not None:
+        update_data["sets_won"] = max(0, payload.sets_won)
+    if payload.sets_lost is not None:
+        update_data["sets_lost"] = max(0, payload.sets_lost)
+    if payload.composed_of is not None:
+        update_data["composed_of"] = payload.composed_of
+    
+    if not update_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+    
+    try:
+        client.table("participants").update(update_data).eq("id", participant_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Update failed")
+    
+    return {"status": "ok", "participant_id": participant_id, "updated": list(update_data.keys())}
+
+
+@router.post("/admin/teams/{team_id}")
+def admin_update_team(
+    team_id: int,
+    payload: AdminUpdateTeamRequest,
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None)
+):
+    """Aggiorna dati team (admin only).
+    
+    Protezione: richiede X-Admin-Token header.
+    
+    Args:
+        team_id: ID team da aggiornare.
+        payload: Dati da aggiornare (parziali).
+        client: Dipendenza client Supabase.
+        x_admin_token: Token admin da header.
+    
+    Returns:
+        Messaggio conferma.
+    """
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+    
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+    
+    # Verifica team esiste
+    team_res = (
+        client.table("teams")
+        .select("id")
+        .eq("id", team_id)
+        .limit(1)
+        .execute()
+    )
+    if not team_res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
+    
+    # Costruisci update payload (solo campi forniti)
+    update_data = {}
+    if payload.score is not None:
+        update_data["score"] = max(0, payload.score)
+    if payload.balance_credits is not None:
+        update_data["balance_credits"] = max(0, payload.balance_credits)
+    
+    if not update_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+    
+    try:
+        client.table("teams").update(update_data).eq("id", team_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Update failed")
+    
+    return {"status": "ok", "team_id": team_id, "updated": list(update_data.keys())}
