@@ -71,4 +71,32 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
         except Exception:
             pass
 
+    # Se abbiamo un client e un team_id noto, arricchisci con il balance del team
+    try:
+        team_id = result.get("team_id") if isinstance(result, dict) else None
+        if client is not None and team_id:
+            try:
+                team_row = (
+                    client.table("teams")
+                    .select("id, balance_credits")
+                    .eq("id", int(team_id))
+                    .limit(1)
+                    .execute()
+                )
+                if team_row and getattr(team_row, 'data', None):
+                    tb = team_row.data[0].get("balance_credits")
+                    # normalizza a numero
+                    try:
+                        tb_val = int(tb) if tb is not None else 0
+                    except Exception:
+                        tb_val = 0
+                    result["team_balance"] = tb_val
+                    # compatibilità frontend: alias dome_balance
+                    result["dome_balance"] = tb_val
+            except Exception:
+                # non bloccare la risposta se il DB fallisce qui
+                pass
+    except Exception:
+        pass
+
     return result

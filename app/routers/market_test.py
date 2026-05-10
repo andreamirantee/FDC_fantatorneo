@@ -67,6 +67,16 @@ def serve_market_test():
             justify-content: flex-end;
             gap: 15px;
         }}
+        .dome-balance {{
+            background: rgba(255,255,255,0.12);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            min-width: 140px;
+            text-align: right;
+        }}
         .user-greeting {{
             font-size: 13px;
             opacity: 0.9;
@@ -469,6 +479,7 @@ def serve_market_test():
             </div>
             <div class="header-right">
                 <div class="user-greeting">👤 <span id="userGreeting">Caricamento...</span></div>
+                <div id="domeBalance" class="dome-balance">DomeCoin: —</div>
                 <button class="btn-logout" onclick="logout()">Esci</button>
             </div>
         </div>
@@ -1025,6 +1036,7 @@ def serve_market_test():
                     showStatus(statusTarget || 'status', `✓ Acquisto riuscito! Squadra acquistata per ${{cost}} DomeCoin. Non comparirà più nel mercato.`, 'success');
                     loadParticipants();
                     loadMyScore();
+                    loadBalance();
                 }} else {{
                     showStatus(statusTarget || 'status', `✗ ${{formatOperationError(response, result)}}`, 'error');
                 }}
@@ -1057,6 +1069,7 @@ def serve_market_test():
                     showStatus(statusTarget || 'status', `✓ Vendita riuscita! Squadra rilasciata e tornata disponibile nel mercato.`, 'success');
                     loadParticipants();
                     loadMyScore();
+                    loadBalance();
                 }} else {{
                     showStatus(statusTarget || 'status', `✗ ${{formatOperationError(response, result)}}`, 'error');
                 }}
@@ -1074,11 +1087,39 @@ def serve_market_test():
         }}
         
         
-        // Carica classifiche e email dell'utente al startup
+        // Carica classifiche, profilo e saldo DomeCoin al startup
         window.addEventListener('load', async function() {{
             await loadMyScore();
+            await loadBalance();
             loadRanking();
         }});
+
+        // Carica e mostra il saldo DomeCoin dell'utente
+        async function loadBalance() {{
+            const el = document.getElementById('domeBalance');
+            if (!el) return;
+            if (!authToken) {{
+                el.textContent = 'DomeCoin: —';
+                return;
+            }}
+
+            try {{
+                const resp = await fetch(`${{API_BASE}}/users/me`, {{ headers: {{ 'Authorization': `Bearer ${{authToken}}` }} }});
+                if (!resp.ok) {{
+                    el.textContent = 'DomeCoin: —';
+                    return;
+                }}
+                const payload = await resp.json();
+                const profile = payload?.profile || {{}};
+                const raw = profile?.dome_balance ?? payload?.dome_balance ?? profile?.balance ?? payload?.balance ?? 0;
+                const num = Number(raw) || 0;
+                const formatted = num.toLocaleString('it-IT', {{ minimumFractionDigits: 0, maximumFractionDigits: 2 }});
+                el.textContent = `DomeCoin: ${{formatted}}`;
+            }} catch (err) {{
+                console.warn('Impossibile caricare DomeCoin:', err);
+                el.textContent = 'DomeCoin: —';
+            }}
+        }}
         
         function showDetailModal(team) {{
             if (!team || !team.id) return;
