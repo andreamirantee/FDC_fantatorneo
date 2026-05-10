@@ -149,16 +149,85 @@ def serve_admin_panel():
 			color: #9ca3af;
 			cursor: not-allowed;
 		}
-		@media (max-width: 1200px) {
-			.content { grid-template-columns: 1fr; }
+		
+		/* Flex containers stackable */
+		.flex-selector-container {
+			display: flex;
+			gap: 12px;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: center;
 		}
+		
 		@media (max-width: 768px) {
 			body { padding: 12px; }
 			.header { padding: 18px; flex-direction: column; align-items: flex-start; gap: 12px; }
+			.header h1 { font-size: 1.5em; }
+			.header p { font-size: 13px; }
 			.auth-section { width: 100%; flex-wrap: wrap; }
+			.auth-section label { width: 100%; }
 			.auth-section input, .auth-section button { width: 100%; }
 			.panel { padding: 16px; }
+			.panel h2 { font-size: 1.25em; }
 			th, td { padding: 8px; font-size: 12px; }
+			
+			/* Table scrollable */
+			.admin-table {
+				display: block;
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+			
+			.admin-table th,
+			.admin-table td {
+				padding: 10px 6px;
+				font-size: 12px;
+			}
+			
+			.btn { font-size: 14px; padding: 12px 16px; }
+			.form-group { margin-bottom: 20px; }
+		}
+		
+		@media (max-width: 480px) {
+			body { padding: 8px; }
+			.header { padding: 12px; }
+			.header h1 { font-size: 1.25em; }
+			.container { max-width: 100%; }
+			.panel { padding: 12px; }
+			.panel h2 { font-size: 1.15em; margin-bottom: 12px; }
+			
+			label {
+				display: block;
+				margin-bottom: 8px !important;
+				font-size: 12px;
+			}
+			
+			select,
+			input[type="text"],
+			input[type="password"],
+			input[type="number"] {
+				font-size: 14px !important;
+				padding: 10px !important;
+				margin-bottom: 8px;
+			}
+			
+			.admin-table th,
+			.admin-table td {
+				padding: 8px 4px;
+				font-size: 11px;
+			}
+			
+			.admin-table input {
+				font-size: 11px !important;
+				padding: 4px 6px !important;
+			}
+			
+			.btn { 
+				width: 100%;
+				font-size: 13px;
+				padding: 12px;
+				margin-bottom: 10px;
+			}
 		}
 	</style>
 </head>
@@ -267,7 +336,7 @@ def serve_admin_panel():
 				<div class="section-hint">Visualizza e modifica classifica per team utenti o sport.</div>
 				<div class="panel full-width">
 					<h2>📋 Visualizza Classifica</h2>
-					<div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px;">
+					<div class="flex-selector-container" style="margin-bottom: 20px;">
 						<label for="classifyViewSelect" style="font-weight: 600; color: #e5e7eb;">Seleziona vista:</label>
 						<select id="classifyViewSelect" onchange="loadRankingView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
 							<option value="teams">👥 Team Utenti</option>
@@ -275,6 +344,15 @@ def serve_admin_panel():
 							<option value="pallavolo">🏐 Pallavolo</option>
 							<option value="padel">🎾 Padel</option>
 						</select>
+						<div id="rankingSportViewWrapper" style="display:none; gap: 12px; align-items: center;">
+							<label for="rankingSportSubViewSelect" style="font-weight: 600; color: #e5e7eb;">Dettaglio sport:</label>
+							<select id="rankingSportSubViewSelect" onchange="loadRankingView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+								<option value="all">Tutto</option>
+								<option value="group_a">Girone A</option>
+								<option value="group_b">Girone B</option>
+								<option value="finals">Fasi finali</option>
+							</select>
+						</div>
 					</div>
 					<div style="overflow-x: auto;" id="rankingViewContainer">
 						<p style="text-align: center; color: #9ca3af;">Caricamento classifica...</p>
@@ -285,6 +363,27 @@ def serve_admin_panel():
 					<p style="color: #9ca3af; font-size: 13px; margin-bottom: 15px;">Aggiorna PF, V, S, GF/GS o SV/SP e punteggi.</p>
 					<div style="margin-bottom: 20px;">
 						<h3 style="margin-bottom: 10px;">🏆 Partecipanti (Squadre)</h3>
+						<div class="flex-selector-container" style="margin-bottom: 15px;">
+							<label for="modifyClassificaSportSelect" style="font-weight: 600; color: #e5e7eb;">Sport:</label>
+							<select id="modifyClassificaSportSelect" onchange="updateModifyClassificaView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+								<option value="">Tutto</option>
+								<option value="calcio">⚽ Calcio</option>
+								<option value="pallavolo">🏐 Pallavolo</option>
+								<option value="padel">🎾 Padel</option>
+							</select>
+							<div id="modifyClassificaSportViewWrapper" style="display:none; gap: 12px; align-items: center;">
+								<label for="modifyClassificaSubViewSelect" style="font-weight: 600; color: #e5e7eb;">Dettaglio:</label>
+								<select id="modifyClassificaSubViewSelect" onchange="updateModifyClassificaView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+									<option value="all">Tutto</option>
+									<option value="group_a">Girone A</option>
+									<option value="group_b">Girone B</option>
+									<option value="finals">Fasi finali</option>
+								</select>
+							</div>
+						</div>
+						<div style="margin-bottom: 10px;">
+							<button type="button" class="btn btn-primary" onclick="saveAllParticipantChanges()">Salva modifiche classifica</button>
+						</div>
 						<div id="adminParticipantsContainer">Caricamento...</div>
 					</div>
 					<div>
@@ -378,10 +477,6 @@ def serve_admin_panel():
 						</form>
 					</div>
 				</div>
-				<div class="panel full-width" style="margin-top:16px;">
-					<h2>🏐 Pallavolo - Gironi e Finali</h2>
-					<div id="volleyStructureContainer">Caricamento...</div>
-				</div>
 			</div>
 
 			<div class="section-block">
@@ -430,7 +525,7 @@ def serve_admin_panel():
 				loadSquads();
 				loadAdminData();
 				loadMatches();
-				loadVolleyStructure();
+				loadRankingView();
 				updateMatchLogicPreview();
 			}
 		}
@@ -450,7 +545,7 @@ def serve_admin_panel():
 				loadSquads();
 				loadAdminData();
 				loadMatches();
-				loadVolleyStructure();
+				loadRankingView();
 				updateMatchLogicPreview();
 			} else {
 				showAuthStatus('✗ Token non valido', 'error');
@@ -523,6 +618,27 @@ def serve_admin_panel():
 			el.innerHTML = `Logica ${sport}: A ${home}-${away} B → A ${p.home} punti, ${home} ${metricWin}, ${away} ${metricLose}; B ${p.away} punti, ${away} ${metricWin}, ${home} ${metricLose}.`;
 		}
 
+		async function updateModifyClassificaView() {
+			try {
+				const rankingRes = await fetch(`${API_BASE}/market/ranking`);
+				const ranking = rankingRes.ok ? await rankingRes.json() : [];
+				
+				const sport = document.getElementById('modifyClassificaSportSelect')?.value || null;
+				const subview = document.getElementById('modifyClassificaSubViewSelect')?.value || 'all';
+				const sportWrapper = document.getElementById('modifyClassificaSportViewWrapper');
+				
+				// Show/hide subview selector based on sport selection
+				if (sportWrapper) {
+					sportWrapper.style.display = sport ? 'flex' : 'none';
+				}
+				
+				renderAdminParticipantsTable(ranking, sport, subview);
+			} catch (err) {
+				console.error('Errore aggiornamento modifica classifica:', err);
+				document.getElementById('adminParticipantsContainer').innerHTML = '<p style="color: #fca5a5;">Errore caricamento</p>';
+			}
+		}
+
 		async function loadAdminData() {
 			try {
 				const [rankingRes, teamsRes] = await Promise.all([
@@ -533,7 +649,7 @@ def serve_admin_panel():
 				const ranking = rankingRes.ok ? await rankingRes.json() : [];
 				const teams = teamsRes.ok ? await teamsRes.json() : [];
 
-				renderAdminParticipantsTable(ranking);
+				updateModifyClassificaView();
 				renderAdminTeamsTable(teams);
 			} catch (err) {
 				console.error('Errore caricamento admin:', err);
@@ -542,162 +658,142 @@ def serve_admin_panel():
 			}
 		}
 
-		async function loadVolleyStructure() {
-			const container = document.getElementById('volleyStructureContainer');
-			if (!container) return;
-			try {
-				const response = await fetch(`${API_BASE}/market/volley/structure`);
-				const payload = response.ok ? await response.json() : null;
-				if (!response.ok || !payload) {
-					container.innerHTML = '<p style="color: #fca5a5;">Errore caricamento</p>';
-					return;
-				}
-				container.innerHTML = renderVolleyStructure(payload);
-			} catch (err) {
-				container.innerHTML = '<p style="color: #fca5a5;">Errore caricamento</p>';
-			}
+		function renderSportGroupTable(title, teams, sportKey) {
+			const header = sportKey === 'calcio'
+				? '<tr><th>Pos</th><th>Squadra</th><th>PF</th><th>V</th><th>S</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th></tr>'
+				: '<tr><th>Pos</th><th>Squadra</th><th>PF</th><th>V</th><th>S</th><th>SV</th><th>SP</th><th>Pti</th></tr>';
+		const rows = teams.length
+			? teams.map((team, index) => `
+				<tr>
+					<td>${index + 1}</td>
+					<td>${team.name || 'Squadra ' + team.id}</td>
+					<td>${team.matches_played || 0}</td>
+					<td>${team.wins || 0}</td>
+					<td>${team.losses || 0}</td>
+					${sportKey === 'calcio'
+						? `<td>${team.goals_for || 0}</td><td>${team.goals_against || 0}</td><td>${(team.goals_for || 0) - (team.goals_against || 0)}</td>`
+						: `<td>${team.sets_won || 0}</td><td>${team.sets_lost || 0}</td>`}
+					<td>${team.points || 0}</td>
+				</tr>
+			`).join('')
+			: `<tr><td colspan="${sportKey === 'calcio' ? 9 : 8}" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>`;
+		return `
+			<div class="panel" style="margin-bottom: 16px;">
+				<h3 style="margin: 10px 0;">${title}</h3>
+				<table class="admin-table">
+					<thead>${header}</thead>
+					<tbody>${rows}</tbody>
+				</table>
+			</div>
+		`;
 		}
 
-		function renderVolleyStructure(data) {
+		function renderSportFinalsTable(finals) {
+			const rows = finals.length
+				? finals.map(pair => {
+					const homeName = pair.home ? (pair.home.name || 'Squadra ' + pair.home.id) : '-';
+					const awayName = pair.away ? (pair.away.name || 'Squadra ' + pair.away.id) : '-';
+					const score = pair.match && pair.home && pair.away
+						? (pair.match.home_squad_id === pair.home.id
+							? `${pair.match.home_score ?? 0}-${pair.match.away_score ?? 0}`
+							: `${pair.match.away_score ?? 0}-${pair.match.home_score ?? 0}`)
+						: '-';
+					return `<tr><td>${pair.label || '-'}</td><td>${homeName}</td><td>${awayName}</td><td>${score}</td></tr>`;
+				}).join('')
+				: '<tr><td colspan="4" style="text-align:center; color:#9ca3af;">Nessuna finale</td></tr>';
+			return `
+				<div class="panel">
+					<h3 style="margin: 10px 0;">Fasi finali</h3>
+					<table class="admin-table">
+						<thead><tr><th>Fase</th><th>Squadra</th><th>Squadra</th><th>Risultato</th></tr></thead>
+						<tbody>${rows}</tbody>
+					</table>
+				</div>
+			`;
+		}
+
+		function renderSportView(data, sportView) {
+			const sportKey = String(data.sport || 'Pallavolo').toLowerCase();
 			const groupA = (data.groups && data.groups.A) || [];
 			const groupB = (data.groups && data.groups.B) || [];
-			const finals = data.finals || {};
+			const finals = Array.isArray(data.finals) ? data.finals : [];
 
-			const renderGroupTable = (title, teams) => {
-				const rows = teams.length
-					? teams.map((team, index) => `
-						<tr>
-							<td>${index + 1}</td>
-							<td>${team.name || 'Squadra ' + team.id}</td>
-							<td>${team.matches_played || 0}</td>
-							<td>${team.wins || 0}</td>
-							<td>${team.losses || 0}</td>
-							<td>${team.sets_won || 0}</td>
-							<td>${team.sets_lost || 0}</td>
-							<td>${team.points || 0}</td>
-						</tr>
-					`).join('')
-					: '<tr><td colspan="8" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>';
-				return `
-					<h3 style="margin: 10px 0;">${title}</h3>
-					<table class="admin-table">
-						<thead>
-							<tr>
-								<th>Pos</th>
-								<th>Squadra</th>
-								<th>PF</th>
-								<th>V</th>
-								<th>S</th>
-								<th>SV</th>
-								<th>SP</th>
-								<th>Pti</th>
-							</tr>
-						</thead>
-						<tbody>
-							${rows}
-						</tbody>
-					</table>
-				`;
-			};
-
-			const formatTeamName = (team) => team ? (team.name || ('Squadra ' + team.id)) : '-';
-			const formatScore = (pair) => {
-				if (!pair || !pair.match || !pair.home || !pair.away) return '-';
-				const match = pair.match;
-				const homeScore = match.home_score ?? 0;
-				const awayScore = match.away_score ?? 0;
-				return match.home_squad_id === pair.home.id
-					? `${homeScore}-${awayScore}`
-					: `${awayScore}-${homeScore}`;
-			};
-
-			const renderFinalRow = (label, pair) => `
-				<tr>
-					<td>${label}</td>
-					<td>${formatTeamName(pair.home)}</td>
-					<td>${formatTeamName(pair.away)}</td>
-					<td>${formatScore(pair)}</td>
-				</tr>
-			`;
-
-			return `
-				${renderGroupTable('Girone A', groupA)}
-				${renderGroupTable('Girone B', groupB)}
-				<h3 style="margin: 20px 0 10px;">Finali</h3>
-				<table class="admin-table">
-					<thead>
-						<tr>
-							<th>Fase</th>
-							<th>Squadra</th>
-							<th>Squadra</th>
-							<th>Risultato</th>
-						</tr>
-					</thead>
-					<tbody>
-						${renderFinalRow('Finale 5/6', finals.fifth_sixth || {})}
-						${renderFinalRow('Finale 3/4', finals.third_fourth || {})}
-						${renderFinalRow('Finale 1/2', finals.final || {})}
-					</tbody>
-				</table>
-			`;
+			if (sportView === 'group_a') return renderSportGroupTable('Girone A', groupA, sportKey);
+			if (sportView === 'group_b') return renderSportGroupTable('Girone B', groupB, sportKey);
+			if (sportView === 'finals') return renderSportFinalsTable(finals);
+			return `${renderSportGroupTable('Girone A', groupA, sportKey)}${renderSportGroupTable('Girone B', groupB, sportKey)}${renderSportFinalsTable(finals)}`;
 		}
 
-		function renderAdminParticipantsTable(participants) {
-			const isCalcio = (item) => (item.sport || item.role || '').toLowerCase() === 'calcio';
+		function renderAdminParticipantsTable(participants, sport = null, subview = 'all') {
+			// Filter participants by sport if specified
+			let filtered = participants;
+			if (sport) {
+				filtered = participants.filter(p => {
+					const pSport = (p.sport || p.role || '').toLowerCase();
+					return pSport === sport.toLowerCase();
+				});
+			}
+
+			// Filter by group/subview if sport is selected and subview is not 'all'
+			if (sport && subview !== 'all') {
+				filtered = filtered.filter(p => {
+					if (subview === 'group_a') return (p.group_code || '').toUpperCase() === 'A';
+					if (subview === 'group_b') return (p.group_code || '').toUpperCase() === 'B';
+					if (subview === 'finals') return (p.group_code || '').toUpperCase() === 'F';
+					return true;
+				});
+			}
+
 			let html = `
 				<table class="admin-table">
 					<thead>
 						<tr>
 							<th>ID</th>
 							<th>Nome</th>
-							<th>Sport</th>
-							<th>Gir</th>
 							<th>PF</th>
 							<th>V</th>
 							<th>S</th>
 							<th>GF/SV</th>
 							<th>GS/SP</th>
 							<th>Pti</th>
-							<th>Azione</th>
+							<th>Girone</th>
 						</tr>
 					</thead>
 					<tbody>
 			`;
 
-			participants.forEach(p => {
+			filtered.forEach(p => {
 				const sport = p.sport || p.role || 'N/A';
 				const isCal = sport.toLowerCase() === 'calcio';
-				const isVolley = sport.toLowerCase() === 'pallavolo';
 				const gf = isCal ? (p.goals_for || 0) : (p.sets_won || 0);
 				const gs = isCal ? (p.goals_against || 0) : (p.sets_lost || 0);
-				const groupValue = (p.group_code || '').toUpperCase();
-				const groupCell = isVolley
-					? `<select id="group_${p.id}">
-						<option value="" ${groupValue === '' ? 'selected' : ''}></option>
-						<option value="A" ${groupValue === 'A' ? 'selected' : ''}>A</option>
-						<option value="B" ${groupValue === 'B' ? 'selected' : ''}>B</option>
-					</select>`
-					: '<span>-</span>';
-				const composedOfDisplay = (p.composed_of || '').substring(0, 30) + ((p.composed_of && p.composed_of.length > 30) ? '...' : '');
+				const groupCode = (p.group_code || '').toUpperCase();
+				let gironeLabel = 'Nessuno';
+				if (groupCode === 'A') gironeLabel = 'Girone A';
+				else if (groupCode === 'B') gironeLabel = 'Girone B';
 				html += `
-					<tr>
+					<tr data-sport="${sport}" data-participant-id="${p.id}">
 						<td>${p.id}</td>
 						<td>${p.name || 'N/A'}</td>
-						<td>${sport}</td>
-						<td>${groupCell}</td>
 						<td><input type="number" value="${p.matches_played || 0}" id="pg_${p.id}" min="0"></td>
 						<td><input type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0"></td>
 						<td><input type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0"></td>
 						<td><input type="number" value="${gf}" id="gf_${p.id}" min="0"></td>
 						<td><input type="number" value="${gs}" id="gs_${p.id}" min="0"></td>
 						<td><input type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0"></td>
-						<td><input type="text" value="${(p.composed_of || '').replace(/"/g, '&quot;')}" id="composed_${p.id}" placeholder="Es: Ronaldo, Messi..."></td>
-						<td><button class="btn-save" onclick="saveParticipantChanges(${p.id}, '${sport}')">Salva</button></td>
+						<td><select id="group_${p.id}" style="width: 100%; padding: 6px 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; border-radius: 6px;">
+							<option value="" ${!groupCode ? 'selected' : ''}>ND</option>
+							<option value="A" ${groupCode === 'A' ? 'selected' : ''}>A</option>
+							<option value="B" ${groupCode === 'B' ? 'selected' : ''}>B</option>
+						</select></td>
 					</tr>
 				`;
 			});
 
-			html += `</tbody></table>`;
+				html += `</tbody></table>`;
+			if (filtered.length === 0 && sport) {
+				html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
+			}
 			document.getElementById('adminParticipantsContainer').innerHTML = html;
 		}
 
@@ -735,14 +831,16 @@ def serve_admin_panel():
 		async function loadRankingView() {
 			const view = document.getElementById('classifyViewSelect')?.value || 'teams';
 			const container = document.getElementById('rankingViewContainer');
+			const sportWrapper = document.getElementById('rankingSportViewWrapper');
+			const sportSelect = document.getElementById('rankingSportSubViewSelect');
 			if (!container) return;
 
 			try {
 				if (view === 'teams') {
-					// Mostra team utenti
+					if (sportWrapper) sportWrapper.style.display = 'none';
 					const teamsRes = await fetch(`${API_BASE}/teams`);
 					const teams = teamsRes.ok ? await teamsRes.json() : [];
-					const html = `
+					container.innerHTML = `
 						<table class="admin-table" style="width: 100%;">
 							<thead>
 								<tr>
@@ -766,52 +864,19 @@ def serve_admin_panel():
 							</tbody>
 						</table>
 					`;
-					container.innerHTML = html;
-				} else {
-					// Mostra classifica sport
-					const rankingRes = await fetch(`${API_BASE}/market/ranking`);
-					const ranking = rankingRes.ok ? await rankingRes.json() : [];
-					const sport = view.charAt(0).toUpperCase() + view.slice(1);
-					const sportRanking = ranking.filter(item => {
-						const role = (String(item.sport || item.role || '').toLowerCase());
-						return role === view.toLowerCase();
-					});
-
-					const isCalcio = view === 'calcio';
-					const html = `
-						<table class="admin-table" style="width: 100%;">
-							<thead>
-								<tr>
-									<th>Pos</th>
-									<th>Squadra</th>
-									<th>PF</th>
-									<th>V</th>
-									<th>S</th>
-									<th>${isCalcio ? 'GF' : 'SV'}</th>
-									<th>${isCalcio ? 'GS' : 'SP'}</th>
-									${isCalcio ? '<th>DR</th>' : ''}
-									<th>Pti</th>
-								</tr>
-							</thead>
-							<tbody>
-								${sportRanking.length ? sportRanking.map((team, i) => `
-									<tr>
-										<td>${i + 1}</td>
-										<td>${team.name || 'Squadra ' + team.id}</td>
-										<td>${team.matches_played || 0}</td>
-										<td>${team.wins || 0}</td>
-										<td>${team.losses || 0}</td>
-										<td>${isCalcio ? (team.goals_for || 0) : (team.sets_won || 0)}</td>
-										<td>${isCalcio ? (team.goals_against || 0) : (team.sets_lost || 0)}</td>
-										${isCalcio ? `<td>${(team.goals_for || 0) - (team.goals_against || 0)}</td>` : ''}
-										<td>${team.points ?? team.score ?? 0}</td>
-									</tr>
-								`).join('') : `<tr><td colspan="${isCalcio ? 9 : 8}" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>`}
-							</tbody>
-						</table>
-					`;
-					container.innerHTML = html;
+					return;
 				}
+
+				if (sportWrapper) sportWrapper.style.display = 'flex';
+				const sportResponse = await fetch(`${API_BASE}/market/structure/${view}`);
+				const payload = sportResponse.ok ? await sportResponse.json() : null;
+				if (!sportResponse.ok || !payload) {
+					container.innerHTML = '<p style="text-align:center; color:#fca5a5;">Errore caricamento classifica</p>';
+					return;
+				}
+
+				const sportView = sportSelect?.value || 'all';
+				container.innerHTML = renderSportView(payload, sportView);
 			} catch (err) {
 				console.error('Errore caricamento ranking:', err);
 				container.innerHTML = '<p style="color: #fca5a5;">Errore caricamento classifica</p>';
@@ -825,34 +890,28 @@ def serve_admin_panel():
 				return;
 			}
 
+			const rowSport = sport || document.querySelector(`#adminParticipantsContainer tr[data-participant-id="${participantId}"]`)?.dataset.sport || '';
 			const pg = parseInt(document.getElementById(`pg_${participantId}`).value) || 0;
 			const wins = parseInt(document.getElementById(`wins_${participantId}`).value) || 0;
 			const losses = parseInt(document.getElementById(`losses_${participantId}`).value) || 0;
 			const gf = parseInt(document.getElementById(`gf_${participantId}`).value) || 0;
 			const gs = parseInt(document.getElementById(`gs_${participantId}`).value) || 0;
 			const points = parseInt(document.getElementById(`points_${participantId}`).value) || 0;
-			const composedOf = document.getElementById(`composed_${participantId}`).value || null;
-
-			const isCal = sport.toLowerCase() === 'calcio';
-			const isVolley = sport.toLowerCase() === 'pallavolo';
+			const groupCode = document.getElementById(`group_${participantId}`).value;
+			const sportKey = rowSport.toLowerCase();
+			const isCal = sportKey === 'calcio';
 			const payload = {
 				score: points,
 				wins: wins,
 				losses: losses,
-				composed_of: composedOf
+				group_code: groupCode,
+				matches_played: pg
 			};
 
-			if (isVolley) {
-				const groupEl = document.getElementById(`group_${participantId}`);
-				payload.group_code = groupEl ? groupEl.value : '';
-			}
-
 			if (isCal) {
-				payload.matches_played = pg;
 				payload.goals_for = gf;
 				payload.goals_against = gs;
-			} else if (sport.toLowerCase() !== 'pallavolo') {
-				payload.matches_played = pg;
+			} else {
 				payload.sets_won = gf;
 				payload.sets_lost = gs;
 			}
@@ -868,14 +927,34 @@ def serve_admin_panel():
 				});
 
 				if (response.ok) {
-					alert(`✓ Partecipante ${participantId} aggiornato`);
-				} else {
-					const err = await response.json();
-					alert(`✗ Errore: ${err.detail || 'Aggiornamento fallito'}`);
+					return true;
 				}
+				const err = await response.json();
+				throw new Error(err.detail || 'Aggiornamento fallito');
 			} catch (err) {
+				console.error('Errore salvataggio:', err);
 				alert(`✗ Errore: ${err.message}`);
+				return false;
 			}
+		}
+
+		async function saveAllParticipantChanges() {
+			const token = getAdminToken();
+			if (!token) {
+				alert('✗ Admin token required');
+				return;
+			}
+
+			const rows = Array.from(document.querySelectorAll('#adminParticipantsContainer tr[data-participant-id]'));
+			for (const row of rows) {
+				const participantId = Number(row.dataset.participantId);
+				const sport = row.dataset.sport || '';
+				const saved = await saveParticipantChanges(participantId, sport);
+				if (!saved) {
+					break;
+				}
+			}
+			alert('✓ Modifiche classifica salvate');
 		}
 
 		async function saveTeamChanges(teamId) {

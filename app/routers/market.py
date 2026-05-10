@@ -131,7 +131,7 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
             client.table("teams").update({"score": new_team_score}).eq("id", team_id).execute()
 
 
-def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: int, scored: int, conceded: int, result: str = "win") -> None:
+def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: int, scored: int, conceded: int, result: str = "win", stat_delta: int = 1) -> None:
     """Aggiorna statistiche squadra (participants) e punti classifica.
     
     result: "win", "loss", o "draw"
@@ -150,7 +150,7 @@ def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: i
 
     row = squad_res.data[0]
     current_score = int(row.get("score") or 0)
-    matches_played = int(row.get("matches_played") or 0) + 1
+    matches_played = max(0, int(row.get("matches_played") or 0) + stat_delta)
     update_payload = {
         "score": max(0, current_score + points_delta),
         "matches_played": matches_played,
@@ -158,19 +158,19 @@ def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: i
 
     # Traccia vittorie/sconfitte/pareggi
     if result == "win":
-        update_payload["wins"] = int(row.get("wins") or 0) + 1
+        update_payload["wins"] = max(0, int(row.get("wins") or 0) + stat_delta)
     elif result == "loss":
-        update_payload["losses"] = int(row.get("losses") or 0) + 1
+        update_payload["losses"] = max(0, int(row.get("losses") or 0) + stat_delta)
     elif result == "draw":
-        update_payload["draws"] = int(row.get("draws") or 0) + 1
+        update_payload["draws"] = max(0, int(row.get("draws") or 0) + stat_delta)
 
     sport_key = (sport or "").strip().lower()
     if sport_key == "calcio":
-        update_payload["goals_for"] = int(row.get("goals_for") or 0) + scored
-        update_payload["goals_against"] = int(row.get("goals_against") or 0) + conceded
+        update_payload["goals_for"] = max(0, int(row.get("goals_for") or 0) + scored)
+        update_payload["goals_against"] = max(0, int(row.get("goals_against") or 0) + conceded)
     else:
-        update_payload["sets_won"] = int(row.get("sets_won") or 0) + scored
-        update_payload["sets_lost"] = int(row.get("sets_lost") or 0) + conceded
+        update_payload["sets_won"] = max(0, int(row.get("sets_won") or 0) + scored)
+        update_payload["sets_lost"] = max(0, int(row.get("sets_lost") or 0) + conceded)
 
     try:
         client.table("participants").update(update_payload).eq("id", squad_id).execute()
@@ -240,6 +240,181 @@ def _find_final_match(matches: list[dict], home_id: int | None, away_id: int | N
     return None
 
 
+def _normalize_sport_key(sport: str | None) -> str:
+    sport_key = (sport or "").strip().lower()
+    if sport_key == "volley":
+        return "pallavolo"
+    return sport_key
+
+
+def _sport_structure_config(sport: str | None) -> dict:
+    sport_key = _normalize_sport_key(sport)
+    return {
+        "calcio": {"label": "Calcio", "role": "calcio", "group_size": 3, "final_pairs": 3},
+        "pallavolo": {"label": "Pallavolo", "role": "pallavolo", "group_size": 3, "final_pairs": 3},
+        "padel": {"label": "Padel", "role": "padel", "group_size": 6, "final_pairs": 6},
+    }.get(sport_key, {"label": "Pallavolo", "role": "pallavolo", "group_size": 3, "final_pairs": 3})
+
+
+def _final_label(index: int) -> str:
+    start = index * 2 + 1
+    end = start + 1
+    return f"Finale {start}/{end}"
+
+
+def _sort_group_teams(teams: list[dict], matches: list[dict], sport: str | None) -> list[dict]:
+    grouped: dict[int, list[dict]] = {}
+    for team in teams:
+        grouped.setdefault(int(team.get("points") or 0), []).append(team)
+
+    sport_key = _normalize_sport_key(sport)
+    ordered: list[dict] = []
+    for points in sorted(grouped.keys(), reverse=True):
+        tied = grouped[points]
+        if len(tied) == 1:
+            ordered.extend(tied)
+            continue
+
+        tied_ids = {int(t.get("id")) for t in tied if t.get("id") is not None}
+        head_to_head = _compute_head_to_head_points(matches, tied_ids)
+
+        def tie_break_key(team: dict) -> tuple:
+            team_id = int(team.get("id") or 0)
+            if sport_key == "calcio":
+                goal_diff = int(team.get("goals_for") or 0) - int(team.get("goals_against") or 0)
+                return (
+                    -head_to_head.get(team_id, 0),
+                    -goal_diff,
+                    -int(team.get("goals_for") or 0),
+                    (team.get("name") or ""),
+                )
+
+            return (
+                -head_to_head.get(team_id, 0),
+                -int(team.get("sets_won") or 0),
+                int(team.get("sets_lost") or 0),
+                (team.get("name") or ""),
+            )
+
+        ordered.extend(sorted(tied, key=tie_break_key))
+
+    return ordered
+
+
+def _build_sport_structure(client, sport: str | None) -> dict:
+    config = _sport_structure_config(sport)
+    empty = {
+        "sport": config["label"],
+        "groups": {"A": [], "B": []},
+        "finals": [],
+    }
+    if client is None:
+        return empty
+
+    try:
+        participants_res = (
+            client.table("participants")
+            .select("id, name, role, score, group_code, matches_played, wins, losses, draws, goals_for, goals_against, sets_won, sets_lost, composed_of")
+            .ilike("role", config["role"])
+            .execute()
+        )
+        participants = participants_res.data or []
+    except Exception:
+        return empty
+
+    teams = []
+    for row in participants:
+        teams.append(
+            {
+                "id": row.get("id"),
+                "name": row.get("name"),
+                "sport": row.get("role") or config["label"],
+                "group_code": (row.get("group_code") or "").upper() or None,
+                "points": int(row.get("score") or 0),
+                "matches_played": int(row.get("matches_played") or 0),
+                "wins": int(row.get("wins") or 0),
+                "losses": int(row.get("losses") or 0),
+                "draws": int(row.get("draws") or 0),
+                "goals_for": int(row.get("goals_for") or 0),
+                "goals_against": int(row.get("goals_against") or 0),
+                "sets_won": int(row.get("sets_won") or 0),
+                "sets_lost": int(row.get("sets_lost") or 0),
+                "composed_of": row.get("composed_of"),
+            }
+        )
+
+    try:
+        matches_res = (
+            client.table("matches")
+            .select("home_squad_id, away_squad_id, home_score, away_score, stage, group_code, created_at")
+            .ilike("sport", config["role"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+        matches = matches_res.data or []
+    except Exception:
+        matches = []
+
+    group_matches = [m for m in matches if (m.get("stage") or "group") == "group"]
+    final_matches = [m for m in matches if (m.get("stage") or "") == "final"]
+
+    def build_group(code: str) -> list[dict]:
+        group_code = code.upper()
+        group_teams = [t for t in teams if (t.get("group_code") or "") == group_code]
+        group_match_list = [m for m in group_matches if (m.get("group_code") or "").upper() == group_code]
+        return _sort_group_teams(group_teams, group_match_list, config["role"])
+
+    group_a = build_group("A")
+    group_b = build_group("B")
+
+    if not group_a and not group_b and teams:
+        ordered_teams = _sort_group_teams(teams, [], config["role"])
+        group_a = ordered_teams[: config["group_size"]]
+        group_b = ordered_teams[config["group_size"] : config["group_size"] * 2]
+
+    # Build finals: prefer cross-group pairs (A vs B). If a group slot is missing,
+    # fill it from overall placement ordering so finals always include teams based
+    # on their piazzamenti.
+    finals: list[dict] = []
+    # overall ordering used to fill missing slots (exclude matches head-to-head within groups)
+    ordered_teams = _sort_group_teams(teams, group_matches, config["role"]) if teams else []
+    # track used ids to avoid duplicates when filling
+    used_ids: set[int] = {int(t.get("id")) for t in (group_a + group_b) if t and t.get("id") is not None}
+
+    for index in range(config["final_pairs"]):
+        home = group_a[index] if len(group_a) > index else None
+        away = group_b[index] if len(group_b) > index else None
+
+        # fill missing home/away from ordered_teams (by placement)
+        def _pick_next(exclude: set[int]) -> dict | None:
+            for cand in ordered_teams:
+                cid = int(cand.get("id") or 0)
+                if cid and cid not in exclude:
+                    exclude.add(cid)
+                    return cand
+            return None
+
+        if home is None:
+            home = _pick_next(used_ids)
+        else:
+            used_ids.add(int(home.get("id") or 0))
+
+        if away is None:
+            away = _pick_next(used_ids)
+        else:
+            used_ids.add(int(away.get("id") or 0))
+
+        match = _find_final_match(
+            final_matches,
+            home.get("id") if home else None,
+            away.get("id") if away else None,
+        )
+
+        finals.append({"label": _final_label(index), "home": home, "away": away, "match": match})
+
+    return {"sport": config["label"], "groups": {"A": group_a, "B": group_b}, "finals": finals}
+
+
 @router.get("/ranking", response_model=list[RankingItem])
 def get_ranking(client=Depends(get_supabase_client)):
     """Ottieni classifica squadre (participants) ordinata per score (desc) poi costo (asc).
@@ -301,99 +476,16 @@ def get_ranking(client=Depends(get_supabase_client)):
         return []
 
 
+@router.get("/structure/{sport_key}")
+def get_sport_structure(sport_key: str, client=Depends(get_supabase_client)):
+    """Ritorna struttura gironi e finali per lo sport richiesto."""
+    return _build_sport_structure(client, sport_key)
+
+
 @router.get("/volley/structure")
 def get_volley_structure(client=Depends(get_supabase_client)):
-    """Ritorna classifiche pallavolo per gironi e accoppiamenti finali."""
-    empty = {
-        "groups": {"A": [], "B": []},
-        "finals": {"fifth_sixth": None, "third_fourth": None, "final": None},
-    }
-    if client is None:
-        return empty
-
-    try:
-        participants_res = (
-            client.table("participants")
-            .select("id, name, role, score, group_code, matches_played, wins, losses, draws, sets_won, sets_lost, composed_of")
-            .ilike("role", "pallavolo")
-            .execute()
-        )
-        participants = participants_res.data or []
-    except Exception:
-        return empty
-
-    teams = []
-    for row in participants:
-        teams.append(
-            {
-                "id": row.get("id"),
-                "name": row.get("name"),
-                "sport": row.get("role") or "Pallavolo",
-                "group_code": (row.get("group_code") or "").upper() or None,
-                "points": int(row.get("score") or 0),
-                "matches_played": int(row.get("matches_played") or 0),
-                "wins": int(row.get("wins") or 0),
-                "losses": int(row.get("losses") or 0),
-                "draws": int(row.get("draws") or 0),
-                "sets_won": int(row.get("sets_won") or 0),
-                "sets_lost": int(row.get("sets_lost") or 0),
-                "composed_of": row.get("composed_of"),
-            }
-        )
-
-    matches = []
-    try:
-        matches_res = (
-            client.table("matches")
-            .select(
-                "home_squad_id, away_squad_id, home_score, away_score, stage, group_code, created_at"
-            )
-            .ilike("sport", "pallavolo")
-            .order("created_at", desc=True)
-            .execute()
-        )
-        matches = matches_res.data or []
-    except Exception:
-        matches = []
-
-    group_matches = [
-        m for m in matches if (m.get("stage") or "group") == "group"
-    ]
-    final_matches = [
-        m for m in matches if (m.get("stage") or "") == "final"
-    ]
-
-    def build_group(code: str) -> list[dict]:
-        group_code = code.upper()
-        group_teams = [t for t in teams if (t.get("group_code") or "") == group_code]
-        group_match_list = [
-            m for m in group_matches if (m.get("group_code") or "").upper() == group_code
-        ]
-        return _sort_group_teams(group_teams, group_match_list)
-
-    group_a = build_group("A")
-    group_b = build_group("B")
-
-    def pick_team(group_list: list[dict], index: int) -> dict | None:
-        return group_list[index] if len(group_list) > index else None
-
-    def build_final_pair(index: int) -> dict:
-        home = pick_team(group_a, index)
-        away = pick_team(group_b, index)
-        match = _find_final_match(
-            final_matches,
-            home.get("id") if home else None,
-            away.get("id") if away else None,
-        )
-        return {"home": home, "away": away, "match": match}
-
-    finals = {
-        "fifth_sixth": build_final_pair(2),
-        "third_fourth": build_final_pair(1),
-        "final": build_final_pair(0),
-    }
-
-    return {"groups": {"A": group_a, "B": group_b}, "finals": finals}
+    """Compatibilità retroattiva per la struttura pallavolo."""
+    return _build_sport_structure(client, "pallavolo")
 
 
 @router.post("/ranking/reset", status_code=status.HTTP_200_OK)
@@ -537,7 +629,7 @@ def record_match(
         home_group = home_squad_res.data[0].get("group_code")
         away_group = away_squad_res.data[0].get("group_code")
         match_group = None
-        if stage == "group" and sport_key == "pallavolo" and home_group and home_group == away_group:
+        if stage == "group" and home_group and home_group == away_group:
             match_group = home_group
 
         # Aggiorna statistiche squadre e punti classifica
@@ -1146,8 +1238,8 @@ def admin_update_match(
         old_away_result = "draw"
     
     # ROLLBACK: sottrai i punti vecchi
-    _apply_match_stats(client, old_home_squad_id, old_sport, -old_home_points, -old_home_score, -old_away_score, old_home_result)
-    _apply_match_stats(client, old_away_squad_id, old_sport, -old_away_points, -old_away_score, -old_home_score, old_away_result)
+    _apply_match_stats(client, old_home_squad_id, old_sport, -old_home_points, -old_home_score, -old_away_score, old_home_result, -1)
+    _apply_match_stats(client, old_away_squad_id, old_sport, -old_away_points, -old_away_score, -old_home_score, old_away_result, -1)
     _distribute_squad_points(client, old_home_squad_id, -old_home_points)
     _distribute_squad_points(client, old_away_squad_id, -old_away_points)
 
@@ -1193,8 +1285,8 @@ def admin_update_match(
         away_result = "draw"
 
     # APPLICA i NUOVI punti
-    _apply_match_stats(client, old_home_squad_id, sport_key, home_points, home_score, away_score, home_result)
-    _apply_match_stats(client, old_away_squad_id, sport_key, away_points, away_score, home_score, away_result)
+    _apply_match_stats(client, old_home_squad_id, sport_key, home_points, home_score, away_score, home_result, 1)
+    _apply_match_stats(client, old_away_squad_id, sport_key, away_points, away_score, home_score, away_result, 1)
     _distribute_squad_points(client, old_home_squad_id, home_points)
     _distribute_squad_points(client, old_away_squad_id, away_points)
 
@@ -1247,8 +1339,8 @@ def admin_delete_match(match_id: int, client=Depends(get_supabase_client), x_adm
         away_result = "draw"
 
     # ROLLBACK: sottrai i punti
-    _apply_match_stats(client, home_squad_id, sport, -home_points, -home_score, -away_score, home_result)
-    _apply_match_stats(client, away_squad_id, sport, -away_points, -away_score, -home_score, away_result)
+    _apply_match_stats(client, home_squad_id, sport, -home_points, -home_score, -away_score, home_result, -1)
+    _apply_match_stats(client, away_squad_id, sport, -away_points, -away_score, -home_score, away_result, -1)
     _distribute_squad_points(client, home_squad_id, -home_points)
     _distribute_squad_points(client, away_squad_id, -away_points)
 

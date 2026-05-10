@@ -1,19 +1,21 @@
-aggiungere saldo di DomeCoin in alto a dx
-
-sezione con menu a tendina per scegliere tra gli sport e per ognuno squadre con nome partecipante e bottone acquista/vendi. 
-
-aggiungere una tabella bonus con nome, punti e motivo. aggiungere la sezione motivo anche nella pagina il mio punteggio
-
-dividere schermata admin in sezione squadre (aggiungi, modifica, elimina) classifica (visualizza, modifica) partita (aggiungi, elimina, modifica) con messaggio di logica della classifica e selezione tipo sport per facilitare a differenziare tra gol fatti e set vinti ad esempio. (se a vince 2 1 contro b, messaggio di conferma con a 3 punti 2 gf 1gs,  b 0 punti 1 gf 2gs, sezione bonus con bottoni per tutti i tipi di bonus.
-
-sistemare edit classifica
-
 introdurre logica per gli altri sport
+
+sistemare edit partita e classifica: la partita non modifica match fatti vittorie e sconfitte, la classifica non modifica le partite fatte.
+
+rimuovere dalla sezione view classifica la colonna girone, la colonna azione e la colonna sport. poi per ogni sezione dividere secondo la logica degli sport in gironi e fasi finali
 
 
 aggiungere casella per i bonus
 
+modifica sezione il mio team per vedere statistiche avanzate 
+
+
 
 ci devono essere i nomi dei giocatori di ogni squadra.
 
-nella versione mobile tutte le varie sezioni devono essere compattabili e non visibili se non necessarie.
+rendere sito mobile ready
+
+
+cambiare colori
+
+comprare dominio
