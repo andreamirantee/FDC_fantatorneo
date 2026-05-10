@@ -525,46 +525,21 @@ def serve_market_test():
                     Cerca e filtra partecipanti: se una squadra e tua vedi "Vendi", altrimenti "Acquista"
                 </p>
                 
-                <div class="filters">
-                    <div class="filter-group">
-                        <label>Ricerca Nome</label>
-                        <input type="text" id="filterName" onchange="applyFilters()">
-                    </div>
-                    <div class="filter-group">
-                        <label>Ruolo</label>
-                        <select id="filterRole" onchange="applyFilters()">
-                            <option value="">Tutti</option>
-                            <option value="Calcio">Calcio</option>
-                            <option value="Pallavolo">Pallavolo</option>
-                            <option value="Padel">Padel</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Costo Max</label>
-                        <input type="number" id="filterCost" value="100" onchange="applyFilters()">
-                    </div>
-                    <div class="filter-group">
-                        <label>Squadra</label>
-                        <input type="text" id="filterTeam" onchange="applyFilters()">
-                    </div>
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+                    <label for="sportSelect" style="font-weight:600; color:#333;">Seleziona Sport</label>
+                    <select id="sportSelect" onchange="renderMarketBySport()">
+                        <option value="all">Tutti</option>
+                        <option value="Calcio">Calcio</option>
+                        <option value="Pallavolo">Pallavolo</option>
+                        <option value="Padel">Padel</option>
+                    </select>
+                    <div style="flex:1"></div>
+                    <input type="text" id="filterName" placeholder="Cerca nome partecipante" oninput="renderMarketBySport()" style="padding:8px 10px; border:1px solid #ddd; border-radius:6px;" />
                 </div>
-                
-                <table class="participants-table">
-                    <thead>
-                        <tr>
-                            <th>Pos</th>
-                            <th>Squadra</th>
-                            <th>Ruolo</th>
-                            <th>Punti</th>
-                            <th>Costo</th>
-                            <th>Stato</th>
-                            <th>Azione</th>
-                        </tr>
-                    </thead>
-                    <tbody id="participantsTable">
-                        <tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">Caricamento partecipanti...</td></tr>
-                    </tbody>
-                </table>
+
+                <div id="marketList">
+                    <div style="text-align: center; padding: 20px; color: #999;">Caricamento partecipanti...</div>
+                </div>
                 <div class="status" id="status"></div>
             </div>
 
@@ -578,6 +553,7 @@ def serve_market_test():
         let currentTeamId = null;
         let currentUserProfile = null;
         let currentUserId = null;
+        let currentDomeBalance = 0;
         let authToken = localStorage.getItem('fdc_access_token');
         
         function switchTab(tabName, clickedEvent) {{
@@ -817,28 +793,84 @@ def serve_market_test():
         async function loadParticipants() {{
             try {{
                 const filterNameEl = document.getElementById('filterName');
-                const filterRoleEl = document.getElementById('filterRole');
-                const filterCostEl = document.getElementById('filterCost');
-                const filterTeamEl = document.getElementById('filterTeam');
                 if (filterNameEl) filterNameEl.value = '';
-                if (filterRoleEl) filterRoleEl.value = '';
-                if (filterCostEl) filterCostEl.value = '100';
-                if (filterTeamEl) filterTeamEl.value = '';
 
                 const response = await fetch(`${{API_BASE}}/participants`);
                 const payload = await response.json();
+                if (!response.ok) {{
+                    throw new Error(String(payload?.detail || 'Errore nel caricamento partecipanti'));
+                }}
                 allParticipants = Array.isArray(payload) ? payload : [];
                 if (!Array.isArray(payload)) {{
                     console.warn('Risposta partecipanti non valida:', payload);
+                    showStatus('status', 'Formato risposta partecipanti non valido.', 'error');
                 }}
-                applyFilters();
+                // dopo il fetch mostra la vista di default per lo sport selezionato
+                renderMarketBySport();
             }} catch (err) {{
                 console.error('Errore caricamento partecipanti:', err);
-                const table = document.getElementById('participantsTable');
-                if (table) {{
-                    table.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #b91c1c;">Errore nel caricamento dei partecipanti</td></tr>';
+                const list = document.getElementById('marketList');
+                if (list) {{
+                    list.innerHTML = '<div style="text-align:center; padding:20px; color:#b91c1c;">Errore nel caricamento dei partecipanti</div>';
                 }}
+                showStatus('status', `Impossibile caricare il mercato: ${{err.message || err}}`, 'error');
             }}
+        }}
+
+        // Render per-sport: mostra cards con nome partecipante, composed_of e bottone buy/sell
+        function renderMarketBySport() {{
+            const container = document.getElementById('marketList');
+            if (!container) return;
+
+            const sport = (document.getElementById('sportSelect')?.value || 'all').toLowerCase();
+            const q = (document.getElementById('filterName')?.value || '').toLowerCase();
+
+            const filtered = allParticipants.filter(p => {{
+                const role = (p.role || p.sport || '').toString().toLowerCase();
+                const matchSport = sport === 'all' ? true : (role === sport);
+                const matchQuery = !q || (p.name || '').toString().toLowerCase().includes(q) || (p.composed_of || '').toString().toLowerCase().includes(q);
+                return matchSport && matchQuery;
+            }});
+
+            if (!filtered.length) {{
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">Nessun partecipante per lo sport selezionato</div>';
+                return;
+            }}
+
+            const html = filtered.map(p => {{
+                const owners = Array.isArray(p.owner_user_ids) ? p.owner_user_ids : (p.owner_user_ids || []);
+                const owned = isOwnedByCurrentUser(p);
+                const composed = (p.composed_of || '').toString().split(',').map(x => x.trim()).filter(x => x).map(x => `<div style="font-size:13px; color:#444;">• ${{x}}</div>`).join('') || '<div style="opacity:0.6; font-size:13px;">N/D</div>';
+                const cost = Number(p.cost || 0);
+                const canBuy = Number(currentDomeBalance || 0) >= cost;
+                const buttonHtml = owned
+                    ? `<button class="btn btn-sell" onclick="sellParticipant(${{p.id}}, ${{cost}}, 'status')">Vendi</button>`
+                    : (canBuy
+                        ? `<button class="btn btn-buy" onclick="buyParticipant(${{p.id}}, ${{cost}}, 'status')">Acquista</button>`
+                        : `<button class="btn btn-buy" disabled style="opacity:0.5; cursor:not-allowed;">Acquista</button>`);
+                const hintHtml = (!owned && !canBuy)
+                    ? `<div style="margin-top:8px; font-size:12px; color:#b91c1c;">Saldo insufficiente: servono ${{cost}} DomeCoin</div>`
+                    : '';
+
+                return `
+                    <div style="border:1px solid #e6e6e6; border-radius:10px; padding:14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                        <div style="flex:1">
+                            <div style="font-weight:700; font-size:16px; color:#222;">${{p.name || ('Partecipante ' + p.id)}}</div>
+                            <div style="font-size:13px; color:#666; margin-top:6px;">Ruolo: ${{p.role || '-'}}</div>
+                            <div style="margin-top:8px">${{composed}}</div>
+                        </div>
+                        <div style="width:220px; text-align:right;">
+                            <div style="font-weight:700; font-size:16px; color:#111;">${{cost}} DomeCoin</div>
+                            <div style="margin-top:10px">
+                                ${{buttonHtml}}
+                            </div>
+                            ${{hintHtml}}
+                        </div>
+                    </div>
+                `;
+            }}).join('');
+
+            container.innerHTML = html;
         }}
 
         function isOwnedByCurrentUser(participant) {{
@@ -1009,6 +1041,12 @@ def serve_market_test():
                 return;
             }}
 
+            const numericCost = Number(cost || 0);
+            if (Number(currentDomeBalance || 0) < numericCost) {{
+                showStatus(statusTarget || 'status', `Operazione non possibile: saldo insufficiente. Hai ${{currentDomeBalance}} DomeCoin, ne servono ${{numericCost}}.`, 'error');
+                return;
+            }}
+
             if (!currentTeamId) {{
                 await loadMyScore();
             }}
@@ -1100,6 +1138,8 @@ def serve_market_test():
             if (!el) return;
             if (!authToken) {{
                 el.textContent = 'DomeCoin: —';
+                currentDomeBalance = 0;
+                renderMarketBySport();
                 return;
             }}
 
@@ -1107,17 +1147,25 @@ def serve_market_test():
                 const resp = await fetch(`${{API_BASE}}/users/me`, {{ headers: {{ 'Authorization': `Bearer ${{authToken}}` }} }});
                 if (!resp.ok) {{
                     el.textContent = 'DomeCoin: —';
+                    currentDomeBalance = 0;
+                    showStatus('status', 'Impossibile leggere il saldo DomeCoin. Riprova dopo il login.', 'error');
+                    renderMarketBySport();
                     return;
                 }}
                 const payload = await resp.json();
                 const profile = payload?.profile || {{}};
-                const raw = profile?.dome_balance ?? payload?.dome_balance ?? profile?.balance ?? payload?.balance ?? 0;
+                const raw = profile?.dome_balance ?? payload?.dome_balance ?? profile?.team_balance ?? payload?.team_balance ?? profile?.balance ?? payload?.balance ?? 0;
                 const num = Number(raw) || 0;
+                currentDomeBalance = num;
                 const formatted = num.toLocaleString('it-IT', {{ minimumFractionDigits: 0, maximumFractionDigits: 2 }});
                 el.textContent = `DomeCoin: ${{formatted}}`;
+                renderMarketBySport();
             }} catch (err) {{
                 console.warn('Impossibile caricare DomeCoin:', err);
                 el.textContent = 'DomeCoin: —';
+                currentDomeBalance = 0;
+                showStatus('status', 'Errore nel recupero saldo DomeCoin.', 'error');
+                renderMarketBySport();
             }}
         }}
         
