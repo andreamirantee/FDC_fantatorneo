@@ -107,8 +107,58 @@ def serve_admin_panel():
 		.btn-save:hover { background: #059669; }
 
 		.full-width { grid-column: 1 / -1; }
+		.section-block { margin-bottom: 24px; }
+		.section-title {
+			font-size: 20px;
+			font-weight: 700;
+			margin-bottom: 12px;
+			color: #c4b5fd;
+			border-left: 4px solid #7c3aed;
+			padding-left: 10px;
+		}
+		.section-hint {
+			font-size: 13px;
+			color: #9ca3af;
+			margin-bottom: 14px;
+		}
+		.card-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+			gap: 16px;
+		}
+		.logic-box {
+			margin-top: 10px;
+			padding: 10px 12px;
+			border-radius: 8px;
+			background: rgba(59, 130, 246, 0.15);
+			border: 1px solid rgba(96, 165, 250, 0.4);
+			font-size: 12px;
+			line-height: 1.45;
+			color: #bfdbfe;
+		}
+		.bonus-placeholder {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 10px;
+		}
+		.bonus-placeholder button {
+			padding: 10px;
+			border-radius: 8px;
+			border: 1px dashed #6b7280;
+			background: #111827;
+			color: #9ca3af;
+			cursor: not-allowed;
+		}
 		@media (max-width: 1200px) {
 			.content { grid-template-columns: 1fr; }
+		}
+		@media (max-width: 768px) {
+			body { padding: 12px; }
+			.header { padding: 18px; flex-direction: column; align-items: flex-start; gap: 12px; }
+			.auth-section { width: 100%; flex-wrap: wrap; }
+			.auth-section input, .auth-section button { width: 100%; }
+			.panel { padding: 16px; }
+			th, td { padding: 8px; font-size: 12px; }
 		}
 	</style>
 </head>
@@ -128,196 +178,235 @@ def serve_admin_panel():
 		</div>
 
 		<div id="adminContent" style="display: none;">
-			<div class="content">
-				<div class="panel">
-					<h2>➕ Nuova Squadra</h2>
-					<form onsubmit="addSquad(event)">
-						<div class="form-group">
-							<label>Nome Squadra</label>
-							<input type="text" id="squadName" required>
-						</div>
-						<div class="form-group">
-							<label>Sport</label>
-							<select id="squadSport" required onchange="updateCost()">
-								<option value="">Seleziona sport</option>
-								<option value="Calcio">Calcio (35 DomeCoin)</option>
-								<option value="Pallavolo">Pallavolo (25 DomeCoin)</option>
-								<option value="Padel">Padel (20 DomeCoin)</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Costo (auto)</label>
-							<input type="number" id="squadCost" readonly>
-						</div>
-						<div class="form-group">
-							<label>Composto da (giocatori, es: Ronaldo, Messi)</label>
-							<input type="text" id="squadComposedOf" placeholder="Nomi separati da virgola...">
-						</div>
-						<button type="submit" class="btn btn-primary">Crea Squadra</button>
-						<div id="addSquadStatus" class="status"></div>
-					</form>
-				</div>
-
-				<div class="panel">
-					<h2>🏟️ Nuova Partita</h2>
-					<form onsubmit="recordMatch(event)">
-						<div class="form-group">
-							<label>Squadra Home</label>
-							<select id="homeSquad" required>
-								<option value="">Seleziona squadra</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Squadra Away</label>
-							<select id="awaySquad" required>
-								<option value="">Seleziona squadra</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Fase</label>
-							<select id="matchStage" required>
-								<option value="group">Girone</option>
-								<option value="final">Finale</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Risultato Home</label>
-							<input type="number" id="homeScore" min="0" required>
-						</div>
-						<div class="form-group">
-							<label>Risultato Away</label>
-							<input type="number" id="awayScore" min="0" required>
-						</div>
-						<button type="submit" class="btn btn-primary">Registra Partita</button>
-						<div id="matchStatus" class="status"></div>
-					</form>
-				</div>
-
-				<div class="panel">
-					<h2>🗑️ Elimina Squadra</h2>
-					<form onsubmit="deleteSquadHandler(event)">
-						<div class="form-group">
-							<label>Squadra</label>
-							<select id="deleteSquadSelect" required>
-								<option value="">Seleziona squadra</option>
-							</select>
-						</div>
-						<p style="font-size: 12px; color: #f87171; margin-bottom: 15px;">⚠️ Azione irreversibile!</p>
-						<button type="submit" class="btn btn-danger">Elimina</button>
-						<div id="deleteStatus" class="status"></div>
-					</form>
-				</div>
-
-				<div class="panel">
-					<h2>⭐ Assegna Punti</h2>
-					<form onsubmit="assignPoints(event)">
-						<div class="form-group">
-							<label>Squadra</label>
-							<select id="pointsSquad" required>
-								<option value="">Seleziona squadra</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Punti da Aggiungere</label>
-							<input type="number" id="pointsAmount" required>
-						</div>
-						<button type="submit" class="btn btn-primary">Assegna Punti</button>
-						<div id="pointsStatus" class="status"></div>
-					</form>
-				</div>
-
-				<div class="panel">
-					<h2>➖ Rimuovi Punti</h2>
-					<form onsubmit="removePoints(event)">
-						<div class="form-group">
-							<label>Squadra</label>
-							<select id="removePointsSquad" required>
-								<option value="">Seleziona squadra</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>Punti da Rimuovere</label>
-							<input type="number" id="removePointsAmount" min="1" required>
-						</div>
-						<button type="submit" class="btn btn-danger">Rimuovi Punti</button>
-						<div id="removePointsStatus" class="status"></div>
-					</form>
-				</div>
-			</div>
-
-			<div class="panel full-width">
-				<h2>📋 Squadre</h2>
-				<div style="overflow-x: auto;">
-					<table>
-						<thead>
-							<tr>
-								<th>ID</th>
-								<th>Nome</th>
-								<th>Sport</th>
-								<th>Costo</th>
-								<th>Punti</th>
-							</tr>
-						</thead>
-						<tbody id="squadsTable">
-							<tr><td colspan="5" style="text-align: center; color: #9ca3af;">Caricamento...</td></tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<div class="panel full-width">
-				<h2>👥 Team Giocatori</h2>
-				<div style="overflow-x: auto;">
-					<table>
-						<thead>
-							<tr>
-								<th>ID</th>
-								<th>Nome</th>
-								<th>Score</th>
-								<th>Costo Totale</th>
-								<th>Crediti</th>
-							</tr>
-						</thead>
-						<tbody id="teamsTable">
-							<tr><td colspan="5" style="text-align: center; color: #9ca3af;">Caricamento...</td></tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<div class="panel full-width">
-				<h2>✏️ Modifica Classifiche</h2>
-				<p style="color: #9ca3af; font-size: 13px; margin-bottom: 15px;">
-					Aggiorna PF, V, S, GF/GS o SV/SP e punteggi. Richiede token admin.
-				</p>
-				<div style="margin-bottom: 20px;">
-					<h3 style="margin-bottom: 10px;">🏆 Partecipanti (Squadre)</h3>
-					<div id="adminParticipantsContainer">
-						Caricamento...
+			<div class="section-block">
+				<div class="section-title">Squadre</div>
+				<div class="section-hint">Gestione completa squadre: aggiungi, modifica, elimina.</div>
+				<div class="card-grid">
+					<div class="panel">
+						<h2>➕ Aggiungi Squadra</h2>
+						<form onsubmit="addSquad(event)">
+							<div class="form-group">
+								<label>Nome Squadra</label>
+								<input type="text" id="squadName" required>
+							</div>
+							<div class="form-group">
+								<label>Sport</label>
+								<select id="squadSport" required onchange="updateCost()">
+									<option value="">Seleziona sport</option>
+									<option value="Calcio">Calcio (35 DomeCoin)</option>
+									<option value="Pallavolo">Pallavolo (25 DomeCoin)</option>
+									<option value="Padel">Padel (20 DomeCoin)</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Costo (auto)</label>
+								<input type="number" id="squadCost" readonly>
+							</div>
+							<div class="form-group">
+								<label>Composto da</label>
+								<input type="text" id="squadComposedOf" placeholder="Nomi separati da virgola...">
+							</div>
+							<button type="submit" class="btn btn-primary">Crea Squadra</button>
+							<div id="addSquadStatus" class="status"></div>
+						</form>
 					</div>
-				</div>
-				<div>
-					<h3 style="margin-bottom: 10px;">👥 Team Gestori</h3>
-					<div id="adminTeamsContainer">
-						Caricamento...
+
+					<div class="panel">
+						<h2>✏️ Modifica Squadra</h2>
+						<form onsubmit="updateSquad(event)">
+							<div class="form-group">
+								<label>Squadra</label>
+								<select id="editSquadSelect" required>
+									<option value="">Seleziona squadra</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Nuovo nome</label>
+								<input type="text" id="editSquadName" required>
+							</div>
+							<div class="form-group">
+								<label>Sport</label>
+								<select id="editSquadSport" required>
+									<option value="Calcio">Calcio</option>
+									<option value="Pallavolo">Pallavolo</option>
+									<option value="Padel">Padel</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Costo</label>
+								<input type="number" id="editSquadCost" min="0" required>
+							</div>
+							<div class="form-group">
+								<label>Partecipanti squadra (composed_of)</label>
+								<input type="text" id="editSquadComposedOf" placeholder="Nomi separati da virgola...">
+							</div>
+							<button type="submit" class="btn btn-primary">Salva Modifiche</button>
+							<div id="editSquadStatus" class="status"></div>
+						</form>
+					</div>
+
+					<div class="panel">
+						<h2>🗑️ Elimina Squadra</h2>
+						<form onsubmit="deleteSquadHandler(event)">
+							<div class="form-group">
+								<label>Squadra</label>
+								<select id="deleteSquadSelect" required>
+									<option value="">Seleziona squadra</option>
+								</select>
+							</div>
+							<p style="font-size: 12px; color: #f87171; margin-bottom: 15px;">⚠️ Azione irreversibile.</p>
+							<button type="submit" class="btn btn-danger">Elimina</button>
+							<div id="deleteStatus" class="status"></div>
+						</form>
 					</div>
 				</div>
 			</div>
 
-			<div class="panel full-width">
-				<h2>🏐 Pallavolo - Gironi e Finali</h2>
-				<div id="volleyStructureContainer">
-					Caricamento...
+			<div class="section-block">
+				<div class="section-title">Classifica</div>
+				<div class="section-hint">Visualizza e modifica classifica per team utenti o sport.</div>
+				<div class="panel full-width">
+					<h2>📋 Visualizza Classifica</h2>
+					<div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px;">
+						<label for="classifyViewSelect" style="font-weight: 600; color: #e5e7eb;">Seleziona vista:</label>
+						<select id="classifyViewSelect" onchange="loadRankingView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+							<option value="teams">👥 Team Utenti</option>
+							<option value="calcio">⚽ Calcio</option>
+							<option value="pallavolo">🏐 Pallavolo</option>
+							<option value="padel">🎾 Padel</option>
+						</select>
+					</div>
+					<div style="overflow-x: auto;" id="rankingViewContainer">
+						<p style="text-align: center; color: #9ca3af;">Caricamento classifica...</p>
+					</div>
+				</div>
+				<div class="panel full-width">
+					<h2>✏️ Modifica Classifica</h2>
+					<p style="color: #9ca3af; font-size: 13px; margin-bottom: 15px;">Aggiorna PF, V, S, GF/GS o SV/SP e punteggi.</p>
+					<div style="margin-bottom: 20px;">
+						<h3 style="margin-bottom: 10px;">🏆 Partecipanti (Squadre)</h3>
+						<div id="adminParticipantsContainer">Caricamento...</div>
+					</div>
+					<div>
+						<h3 style="margin-bottom: 10px;">👥 Team Gestori</h3>
+						<div id="adminTeamsContainer">Caricamento...</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="section-block">
+				<div class="section-title">Partita</div>
+				<div class="section-hint">Aggiungi, modifica o elimina partite con logica punteggio guidata per sport.</div>
+				<div class="card-grid">
+					<div class="panel">
+						<h2>🏟️ Aggiungi Partita</h2>
+						<form onsubmit="recordMatch(event)">
+							<div class="form-group">
+								<label>Sport partita</label>
+								<select id="matchSport" required onchange="updateMatchLogicPreview()">
+									<option value="Calcio">Calcio</option>
+									<option value="Pallavolo">Pallavolo</option>
+									<option value="Padel">Padel</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Squadra A</label>
+								<select id="homeSquad" required><option value="">Seleziona squadra</option></select>
+							</div>
+							<div class="form-group">
+								<label>Squadra B</label>
+								<select id="awaySquad" required><option value="">Seleziona squadra</option></select>
+							</div>
+							<div class="form-group">
+								<label>Fase</label>
+								<select id="matchStage" required>
+									<option value="group">Girone</option>
+									<option value="final">Finale</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Gol/Set A</label>
+								<input type="number" id="homeScore" min="0" required oninput="updateMatchLogicPreview()">
+							</div>
+							<div class="form-group">
+								<label>Gol/Set B</label>
+								<input type="number" id="awayScore" min="0" required oninput="updateMatchLogicPreview()">
+							</div>
+							<div id="matchLogicPreview" class="logic-box"></div>
+							<button type="submit" class="btn btn-primary">Registra Partita</button>
+							<div id="matchStatus" class="status"></div>
+						</form>
+					</div>
+
+					<div class="panel">
+						<h2>✏️ Modifica Partita</h2>
+						<form onsubmit="updateMatch(event)">
+							<div class="form-group">
+								<label>Partita</label>
+								<select id="editMatchSelect" required><option value="">Seleziona partita</option></select>
+							</div>
+							<div class="form-group">
+								<label>Sport</label>
+								<select id="editMatchSport">
+									<option value="calcio">Calcio</option>
+									<option value="pallavolo">Pallavolo</option>
+									<option value="padel">Padel</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label>Gol/Set A</label>
+								<input type="number" id="editHomeScore" min="0" required>
+							</div>
+							<div class="form-group">
+								<label>Gol/Set B</label>
+								<input type="number" id="editAwayScore" min="0" required>
+							</div>
+							<button type="submit" class="btn btn-primary">Salva Partita</button>
+							<div id="editMatchStatus" class="status"></div>
+						</form>
+					</div>
+
+					<div class="panel">
+						<h2>🗑️ Elimina Partita</h2>
+						<form onsubmit="deleteMatch(event)">
+							<div class="form-group">
+								<label>Partita</label>
+								<select id="deleteMatchSelect" required><option value="">Seleziona partita</option></select>
+							</div>
+							<button type="submit" class="btn btn-danger">Elimina Partita</button>
+							<div id="deleteMatchStatus" class="status"></div>
+						</form>
+					</div>
+				</div>
+				<div class="panel full-width" style="margin-top:16px;">
+					<h2>🏐 Pallavolo - Gironi e Finali</h2>
+					<div id="volleyStructureContainer">Caricamento...</div>
+				</div>
+			</div>
+
+			<div class="section-block">
+				<div class="section-title">Bonus</div>
+				<div class="section-hint">Sezione progettuale bonus. Tipologie in definizione.</div>
+				<div class="panel">
+					<div class="bonus-placeholder">
+						<button disabled>Bonus Fair Play</button>
+						<button disabled>Bonus Vittoria</button>
+						<button disabled>Bonus Clean Sheet</button>
+						<button disabled>Bonus Rimonta</button>
+						<button disabled>Bonus Goal Difference</button>
+						<button disabled>Bonus MVP</button>
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
 
 	<script>
-		const API_BASE = 'http://localhost:8000/api/v1';
+		const API_BASE = '/api/v1';
 		const ADMIN_TOKEN_STORAGE_KEY = 'fdc_admin_token';
 		let adminToken = null;
 		let lastSquads = [];
+		let lastMatches = [];
 		const sportCosts = { 'Calcio': 35, 'Pallavolo': 25, 'Padel': 20 };
 
 		function getAdminToken() {
@@ -339,9 +428,10 @@ def serve_admin_panel():
 				document.getElementById('adminContent').style.display = 'block';
 				showAuthStatus('✓ Token admin caricato', 'success');
 				loadSquads();
-				loadTeams();
 				loadAdminData();
+				loadMatches();
 				loadVolleyStructure();
+				updateMatchLogicPreview();
 			}
 		}
 
@@ -358,9 +448,10 @@ def serve_admin_panel():
 				document.getElementById('adminContent').style.display = 'block';
 				document.getElementById('adminToken').disabled = true;
 				loadSquads();
-				loadTeams();
 				loadAdminData();
+				loadMatches();
 				loadVolleyStructure();
+				updateMatchLogicPreview();
 			} else {
 				showAuthStatus('✗ Token non valido', 'error');
 			}
@@ -401,6 +492,35 @@ def serve_admin_panel():
 			const sport = document.getElementById('squadSport').value;
 			const cost = sportCosts[sport] || 0;
 			document.getElementById('squadCost').value = cost;
+		}
+
+		function computeAwardedPoints(sportKey, homeScore, awayScore) {
+			const sport = String(sportKey || '').toLowerCase();
+			if (sport === 'calcio') {
+				if (homeScore > awayScore) return { home: 3, away: 0 };
+				if (awayScore > homeScore) return { home: 0, away: 3 };
+				return { home: 1, away: 1 };
+			}
+			if (sport === 'pallavolo') {
+				if (homeScore > awayScore) return { home: 3, away: 1 };
+				if (awayScore > homeScore) return { home: 1, away: 3 };
+				return { home: 2, away: 2 };
+			}
+			if (homeScore > awayScore) return { home: 1, away: 0 };
+			if (awayScore > homeScore) return { home: 0, away: 1 };
+			return { home: 1, away: 1 };
+		}
+
+		function updateMatchLogicPreview() {
+			const el = document.getElementById('matchLogicPreview');
+			if (!el) return;
+			const sport = document.getElementById('matchSport')?.value || 'Calcio';
+			const home = parseInt(document.getElementById('homeScore')?.value || '0') || 0;
+			const away = parseInt(document.getElementById('awayScore')?.value || '0') || 0;
+			const p = computeAwardedPoints(sport, home, away);
+			const metricWin = sport === 'Pallavolo' || sport === 'Padel' ? 'set vinti' : 'gol fatti';
+			const metricLose = sport === 'Pallavolo' || sport === 'Padel' ? 'set persi' : 'gol subiti';
+			el.innerHTML = `Logica ${sport}: A ${home}-${away} B → A ${p.home} punti, ${home} ${metricWin}, ${away} ${metricLose}; B ${p.away} punti, ${away} ${metricWin}, ${home} ${metricLose}.`;
 		}
 
 		async function loadAdminData() {
@@ -612,6 +732,92 @@ def serve_admin_panel():
 			document.getElementById('adminTeamsContainer').innerHTML = html;
 		}
 
+		async function loadRankingView() {
+			const view = document.getElementById('classifyViewSelect')?.value || 'teams';
+			const container = document.getElementById('rankingViewContainer');
+			if (!container) return;
+
+			try {
+				if (view === 'teams') {
+					// Mostra team utenti
+					const teamsRes = await fetch(`${API_BASE}/teams`);
+					const teams = teamsRes.ok ? await teamsRes.json() : [];
+					const html = `
+						<table class="admin-table" style="width: 100%;">
+							<thead>
+								<tr>
+									<th>Pos</th>
+									<th>Nome Team</th>
+									<th>Punteggio</th>
+									<th>Costo Totale</th>
+									<th>Crediti Disponibili</th>
+								</tr>
+							</thead>
+							<tbody>
+								${teams.length ? teams.map((t, i) => `
+									<tr>
+										<td>${i + 1}</td>
+										<td>${t.name || 'Team ' + t.id}</td>
+										<td>${t.score || 0}</td>
+										<td>${t.total_cost || 0}</td>
+										<td>${t.balance_credits || 0}</td>
+									</tr>
+								`).join('') : '<tr><td colspan="5" style="text-align:center; color:#9ca3af;">Nessun team</td></tr>'}
+							</tbody>
+						</table>
+					`;
+					container.innerHTML = html;
+				} else {
+					// Mostra classifica sport
+					const rankingRes = await fetch(`${API_BASE}/market/ranking`);
+					const ranking = rankingRes.ok ? await rankingRes.json() : [];
+					const sport = view.charAt(0).toUpperCase() + view.slice(1);
+					const sportRanking = ranking.filter(item => {
+						const role = (String(item.sport || item.role || '').toLowerCase());
+						return role === view.toLowerCase();
+					});
+
+					const isCalcio = view === 'calcio';
+					const html = `
+						<table class="admin-table" style="width: 100%;">
+							<thead>
+								<tr>
+									<th>Pos</th>
+									<th>Squadra</th>
+									<th>PF</th>
+									<th>V</th>
+									<th>S</th>
+									<th>${isCalcio ? 'GF' : 'SV'}</th>
+									<th>${isCalcio ? 'GS' : 'SP'}</th>
+									${isCalcio ? '<th>DR</th>' : ''}
+									<th>Pti</th>
+								</tr>
+							</thead>
+							<tbody>
+								${sportRanking.length ? sportRanking.map((team, i) => `
+									<tr>
+										<td>${i + 1}</td>
+										<td>${team.name || 'Squadra ' + team.id}</td>
+										<td>${team.matches_played || 0}</td>
+										<td>${team.wins || 0}</td>
+										<td>${team.losses || 0}</td>
+										<td>${isCalcio ? (team.goals_for || 0) : (team.sets_won || 0)}</td>
+										<td>${isCalcio ? (team.goals_against || 0) : (team.sets_lost || 0)}</td>
+										${isCalcio ? `<td>${(team.goals_for || 0) - (team.goals_against || 0)}</td>` : ''}
+										<td>${team.points ?? team.score ?? 0}</td>
+									</tr>
+								`).join('') : `<tr><td colspan="${isCalcio ? 9 : 8}" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>`}
+							</tbody>
+						</table>
+					`;
+					container.innerHTML = html;
+				}
+			} catch (err) {
+				console.error('Errore caricamento ranking:', err);
+				container.innerHTML = '<p style="color: #fca5a5;">Errore caricamento classifica</p>';
+			}
+		}
+
 		async function saveParticipantChanges(participantId, sport) {
 			const token = getAdminToken();
 			if (!token) {
@@ -706,6 +912,41 @@ def serve_admin_panel():
 			}
 		}
 
+		async function updateSquad(e) {
+			e.preventDefault();
+			const token = getAdminToken();
+			if (!token) {
+				showStatus('editSquadStatus', '✗ Admin token required', 'error');
+				return;
+			}
+
+			const squadId = parseInt(document.getElementById('editSquadSelect').value);
+			const payload = {
+				name: document.getElementById('editSquadName').value,
+				role: document.getElementById('editSquadSport').value,
+				cost: parseInt(document.getElementById('editSquadCost').value || '0'),
+				composed_of: document.getElementById('editSquadComposedOf').value || null,
+			};
+
+			try {
+				const res = await fetch(`${API_BASE}/market/admin/participants/${squadId}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+					body: JSON.stringify(payload)
+				});
+
+				if (res.ok) {
+					showStatus('editSquadStatus', '✓ Squadra modificata', 'success');
+					loadSquads();
+					loadAdminData();
+				} else {
+					showStatus('editSquadStatus', '✗ ' + await readResponseMessage(res), 'error');
+				}
+			} catch (err) {
+				showStatus('editSquadStatus', '✗ Errore: ' + err.message, 'error');
+			}
+		}
+
 		async function addSquad(e) {
 			e.preventDefault();
 
@@ -768,15 +1009,22 @@ def serve_admin_panel():
 						away_squad_id: awayId,
 						home_score: parseInt(document.getElementById('homeScore').value),
 						away_score: parseInt(document.getElementById('awayScore').value),
+						sport: document.getElementById('matchSport').value,
 						stage: stage
 					})
 				});
 
 				if (res.ok) {
 					const data = await res.json();
-					showStatus('matchStatus', `✓ Partita registrata! Home: ${data.home_points_awarded}pt, Away: ${data.away_points_awarded}pt`, 'success');
+					const sport = document.getElementById('matchSport').value;
+					const metricWin = sport === 'Pallavolo' || sport === 'Padel' ? 'set vinti' : 'gol fatti';
+					const metricLose = sport === 'Pallavolo' || sport === 'Padel' ? 'set persi' : 'gol subiti';
+					const confirmMsg = `✓ Conferma: A ${data.home_points_awarded} punti (${document.getElementById('homeScore').value} ${metricWin}, ${document.getElementById('awayScore').value} ${metricLose}) | B ${data.away_points_awarded} punti (${document.getElementById('awayScore').value} ${metricWin}, ${document.getElementById('homeScore').value} ${metricLose})`;
+					showStatus('matchStatus', confirmMsg, 'success');
 					e.target.reset();
-					window.location.reload();
+					updateMatchLogicPreview();
+					loadMatches();
+					loadAdminData();
 				} else {
 					showStatus('matchStatus', '✗ ' + await readResponseMessage(res), 'error');
 				}
@@ -882,34 +1130,122 @@ def serve_admin_panel():
 			}
 		}
 
+		async function loadMatches() {
+			const token = getAdminToken();
+			if (!token) return;
+			try {
+				const res = await fetch(`${API_BASE}/market/admin/matches?limit=150`, {
+					headers: { 'X-Admin-Token': token }
+				});
+				const matches = res.ok ? await res.json() : [];
+				lastMatches = Array.isArray(matches) ? matches : [];
+				const options = lastMatches.map(m => {
+					const home = m.home_squad_name || m.home_squad_id;
+					const away = m.away_squad_name || m.away_squad_id;
+					return `<option value="${m.id}">#${m.id} ${home} ${m.home_score}-${m.away_score} ${away}</option>`;
+				}).join('');
+				const defaultOpt = '<option value="">Seleziona partita</option>';
+				document.getElementById('editMatchSelect').innerHTML = defaultOpt + options;
+				document.getElementById('deleteMatchSelect').innerHTML = defaultOpt + options;
+
+				const editSel = document.getElementById('editMatchSelect');
+				editSel.onchange = function() {
+					const picked = lastMatches.find(m => Number(m.id) === Number(editSel.value));
+					if (!picked) return;
+					document.getElementById('editHomeScore').value = picked.home_score || 0;
+					document.getElementById('editAwayScore').value = picked.away_score || 0;
+					document.getElementById('editMatchSport').value = String(picked.sport || 'calcio').toLowerCase();
+				};
+			} catch (err) {
+				console.error('Errore partite:', err);
+			}
+		}
+
+		async function updateMatch(e) {
+			e.preventDefault();
+			const token = getAdminToken();
+			if (!token) {
+				showStatus('editMatchStatus', '✗ Admin token required', 'error');
+				return;
+			}
+			const matchId = parseInt(document.getElementById('editMatchSelect').value);
+			if (!matchId) {
+				showStatus('editMatchStatus', '✗ Seleziona una partita', 'error');
+				return;
+			}
+			try {
+				const res = await fetch(`${API_BASE}/market/admin/matches/${matchId}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+					body: JSON.stringify({
+						home_score: parseInt(document.getElementById('editHomeScore').value || '0'),
+						away_score: parseInt(document.getElementById('editAwayScore').value || '0'),
+						sport: document.getElementById('editMatchSport').value,
+					})
+				});
+				if (res.ok) {
+					showStatus('editMatchStatus', '✓ Partita aggiornata', 'success');
+					loadMatches();
+				} else {
+					showStatus('editMatchStatus', '✗ ' + await readResponseMessage(res), 'error');
+				}
+			} catch (err) {
+				showStatus('editMatchStatus', '✗ Errore: ' + err.message, 'error');
+			}
+		}
+
+		async function deleteMatch(e) {
+			e.preventDefault();
+			const token = getAdminToken();
+			if (!token) {
+				showStatus('deleteMatchStatus', '✗ Admin token required', 'error');
+				return;
+			}
+			const matchId = parseInt(document.getElementById('deleteMatchSelect').value);
+			if (!matchId) {
+				showStatus('deleteMatchStatus', '✗ Seleziona una partita', 'error');
+				return;
+			}
+			try {
+				const res = await fetch(`${API_BASE}/market/admin/matches/${matchId}`, {
+					method: 'DELETE',
+					headers: { 'X-Admin-Token': token }
+				});
+				if (res.ok) {
+					showStatus('deleteMatchStatus', '✓ Partita eliminata', 'success');
+					loadMatches();
+				} else {
+					showStatus('deleteMatchStatus', '✗ ' + await readResponseMessage(res), 'error');
+				}
+			} catch (err) {
+				showStatus('deleteMatchStatus', '✗ Errore: ' + err.message, 'error');
+			}
+		}
+
 		async function loadSquads() {
 			try {
 				const res = await fetch(`${API_BASE}/participants`);
 				const squads = await res.json();
 				lastSquads = squads;
 
-				const rows = squads.map(s => `
-					<tr>
-						<td>${s.id}</td>
-						<td>${s.name || 'N/A'}</td>
-						<td>${s.role || '-'}</td>
-						<td>${s.cost || 0} DomeCoin</td>
-						<td>${s.score || 0}</td>
-					</tr>
-				`).join('');
-
-				document.getElementById('squadsTable').innerHTML = rows ||
-					'<tr><td colspan="5" style="text-align: center; color: #9ca3af;">Nessuna squadra</td></tr>';
-
 				const options = squads.map(s => `<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
 				const defaultOpt = '<option value="">Seleziona squadra</option>';
 				document.getElementById('homeSquad').innerHTML = defaultOpt + options;
 				document.getElementById('awaySquad').innerHTML = defaultOpt + options;
-				document.getElementById('pointsSquad').innerHTML = defaultOpt + options;
-				document.getElementById('removePointsSquad').innerHTML = defaultOpt + options;
 				document.getElementById('deleteSquadSelect').innerHTML = defaultOpt + options;
+				document.getElementById('editSquadSelect').innerHTML = defaultOpt + options;
+
+				const sel = document.getElementById('editSquadSelect');
+				sel.onchange = function() {
+					const picked = lastSquads.find(s => Number(s.id) === Number(sel.value));
+					if (!picked) return;
+					document.getElementById('editSquadName').value = picked.name || '';
+					document.getElementById('editSquadSport').value = picked.role || 'Calcio';
+					document.getElementById('editSquadCost').value = picked.cost || 0;
+					document.getElementById('editSquadComposedOf').value = picked.composed_of || '';
+				};
 			} catch (err) {
-				console.error('Errore:', err);
+				console.error('Errore caricamento squadre:', err);
 			}
 		}
 
@@ -917,25 +1253,16 @@ def serve_admin_panel():
 			try {
 				const res = await fetch(`${API_BASE}/teams`);
 				const teams = await res.json();
-
-				const rows = teams.map(t => `
-					<tr>
-						<td>${t.id}</td>
-						<td>${t.name || 'N/A'}</td>
-						<td>${t.score || 0}</td>
-						<td>${t.total_cost || 0} DomeCoin</td>
-						<td>${t.balance_credits || 0}</td>
-					</tr>
-				`).join('');
-
-				document.getElementById('teamsTable').innerHTML = rows ||
-					'<tr><td colspan="5" style="text-align: center; color: #9ca3af;">Nessun team</td></tr>';
+				console.log('Teams loaded:', teams);
 			} catch (err) {
-				console.error('Errore:', err);
+				console.error('Errore caricamento team:', err);
 			}
 		}
 
 		document.addEventListener('DOMContentLoaded', initAdminToken);
+		
+		// Carica la vista di classifica iniziale
+		setTimeout(() => loadRankingView(), 500);
 	</script>
 </body>
 </html>

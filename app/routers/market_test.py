@@ -948,45 +948,92 @@ def serve_market_test():
 
                 const rosterResponse = await fetch(`${{API_BASE}}/market/teams/${{teamId}}/roster`);
                 const roster = rosterResponse.ok ? await rosterResponse.json() : [];
-                const totalScore = roster.reduce((sum, item) => sum + (item.participant_score || 0), 0);
-                const listRows = roster.length
-                    ? roster.map(item => `
-                        <tr>
-                            <td>${{item.participant_name || 'N/A'}}</td>
-                            <td>${{item.role || '-'}}</td>
-                            <td>${{item.participant_score || 0}}</td>
-                        </tr>
-                    `).join('')
-                    : '<tr><td colspan="3" style="opacity:0.8;">Nessun participant acquistato</td></tr>';
-
+                const participantsResponse = await fetch(`${{API_BASE}}/participants`);
+                const participantsPayload = participantsResponse.ok ? await participantsResponse.json() : [];
+                const participantsMap = new Map(
+                    (Array.isArray(participantsPayload) ? participantsPayload : []).map(p => [Number(p.id), p])
+                );
                 const displayName = ((profile.name || '') + ' ' + (profile.surname || '')).trim();
                 const userEmail = payload.email || profile.email || 'N/D';
                 const teamName = displayName ? `${{displayName}}'s team` : `Team ${{teamId}}`;
+                const totalScore = roster.reduce((sum, item) => sum + (item.participant_score || 0), 0);
+                const bonusItems = Array.isArray(payload?.bonus_items) ? payload.bonus_items : [];
+                const bonusTotal = Number(payload?.bonus_total || 0);
+                const grandTotal = totalScore + bonusTotal;
+                const listRows = roster.length
+                    ? roster.map(item => {{
+                        const participantId = Number(item.participant_id);
+                        const participant = participantsMap.get(participantId) || {{}};
+                        const squadraLabel = item.participant_name || participant.name || 'N/D';
+                        const composedRaw = (participant.composed_of || '').toString();
+                        const partecipantiLabel = composedRaw
+                            ? composedRaw.split(',').map(v => v.trim()).filter(Boolean).join(', ')
+                            : 'N/D';
+                        return `
+                            <tr>
+                                <td>${{squadraLabel}}</td>
+                                <td>${{partecipantiLabel}}</td>
+                            </tr>
+                        `;
+                    }}).join('')
+                    : '<tr><td colspan="2" style="opacity:0.8;">Nessun participant acquistato</td></tr>';
+
+                const bonusRows = bonusItems.length
+                    ? bonusItems.map(item => `
+                        <tr>
+                            <td>${{item.name || 'Bonus'}}</td>
+                            <td>${{item.points || 0}}</td>
+                            <td>${{item.reason || 'Motivo non specificato'}}</td>
+                        </tr>
+                    `).join('')
+                    : '<tr><td colspan="3" style="opacity:0.8;">Nessun bonus registrato</td></tr>';
 
                 container.innerHTML = `
                     <h3>${{teamName}}</h3>
                     <p>Account: ${{userEmail}}</p>
                     <div class="score-grid">
                         <div class="score-metric">
-                            <span class="label">Punteggio totale</span>
+                            <span class="label">Punteggio roster</span>
                             <div class="value">${{totalScore}}</div>
+                        </div>
+                        <div class="score-metric">
+                            <span class="label">Bonus totale</span>
+                            <div class="value">${{bonusTotal}}</div>
                         </div>
                         <div class="score-metric">
                             <span class="label">Participant nel team</span>
                             <div class="value">${{roster.length}}</div>
                         </div>
+                        <div class="score-metric">
+                            <span class="label">Totale complessivo</span>
+                            <div class="value">${{grandTotal}}</div>
+                        </div>
                     </div>
                     <div class="my-score-list">
+                        <h4 style="padding:12px; margin:0; font-size:15px;">Il mio team</h4>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Participant</th>
-                                    <th>Sport</th>
-                                    <th>Punti</th>
+                                    <th>Squadra</th>
+                                    <th>Partecipanti</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${{listRows}}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="my-score-list" style="margin-top:16px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Bonus</th>
+                                    <th>Punti</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${{bonusRows}}
                             </tbody>
                         </table>
                     </div>

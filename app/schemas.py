@@ -196,11 +196,15 @@ class MatchResult(BaseModel):
     away_squad_id: int  # ID squadra away
     home_score: int     # Punti/goal squadra home
     away_score: int     # Punti/goal squadra away
+    sport: str | None = None
     stage: str | None = None
 
 
 class AdminUpdateParticipantRequest(BaseModel):
     """Richiesta per aggiornare dati partecipante in admin."""
+    name: str | None = None
+    role: str | None = None
+    cost: int | None = None
     score: int | None = None
     matches_played: int | None = None
     wins: int | None = None

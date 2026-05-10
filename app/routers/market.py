@@ -19,7 +19,7 @@ Protezione Hardening:
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Header, Body
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -488,7 +488,8 @@ def record_match(
 
         home_role = (home_squad_res.data[0].get("role") or "Calcio").strip().lower()
         away_role = (away_squad_res.data[0].get("role") or "Calcio").strip().lower()
-        sport_key = home_role or away_role or "calcio"
+        requested_sport = (payload.sport or "").strip().lower() if hasattr(payload, "sport") else ""
+        sport_key = requested_sport or home_role or away_role or "calcio"
 
         if sport_key == "calcio":
             if payload.home_score > payload.away_score:
@@ -969,6 +970,12 @@ def admin_update_participant(
     
     # Costruisci update payload (solo campi forniti)
     update_data = {}
+    if payload.name is not None:
+        update_data["name"] = payload.name
+    if payload.role is not None:
+        update_data["role"] = payload.role
+    if payload.cost is not None:
+        update_data["cost"] = max(0, payload.cost)
     if payload.score is not None:
         update_data["score"] = max(0, payload.score)
     if payload.matches_played is not None:
@@ -1057,3 +1064,194 @@ def admin_update_team(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Update failed")
     
     return {"status": "ok", "team_id": team_id, "updated": list(update_data.keys())}
+
+
+@router.get("/admin/matches")
+def admin_list_matches(limit: int = 100, client=Depends(get_supabase_client), x_admin_token: str = Header(None)):
+    """Lista partite registrate (admin)."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    safe_limit = max(1, min(int(limit), 300))
+    rows = (
+        client.table("matches")
+        .select("id, sport, stage, group_code, home_squad_id, away_squad_id, home_score, away_score, home_points_awarded, away_points_awarded, created_at")
+        .order("id", desc=True)
+        .limit(safe_limit)
+        .execute()
+    )
+    data = rows.data or []
+
+    ids = set()
+    for r in data:
+        if r.get("home_squad_id") is not None:
+            ids.add(int(r["home_squad_id"]))
+        if r.get("away_squad_id") is not None:
+            ids.add(int(r["away_squad_id"]))
+
+    name_map = _build_participant_name_map(client, sorted(ids)) if ids else {}
+
+    return [
+        {
+            **row,
+            "home_squad_name": name_map.get(int(row["home_squad_id"])) if row.get("home_squad_id") is not None else None,
+            "away_squad_name": name_map.get(int(row["away_squad_id"])) if row.get("away_squad_id") is not None else None,
+        }
+        for row in data
+    ]
+
+
+@router.post("/admin/matches/{match_id}")
+def admin_update_match(
+    match_id: int,
+    payload: dict = Body(default={}),
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None),
+):
+    """Aggiorna una partita registrata (admin) con rollback automatico di punti."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    # Ottieni la partita attuale (con ALL i dati che servono)
+    current = client.table("matches").select(
+        "id, sport, stage, home_squad_id, away_squad_id, home_score, away_score, home_points_awarded, away_points_awarded"
+    ).eq("id", match_id).limit(1).execute()
+    if not current.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
+
+    row = current.data[0]
+    
+    # Estrai i dati ATTUALI della partita
+    old_home_squad_id = int(row.get("home_squad_id"))
+    old_away_squad_id = int(row.get("away_squad_id"))
+    old_home_score = int(row.get("home_score") or 0)
+    old_away_score = int(row.get("away_score") or 0)
+    old_home_points = int(row.get("home_points_awarded") or 0)
+    old_away_points = int(row.get("away_points_awarded") or 0)
+    old_sport = (row.get("sport") or "calcio").strip().lower()
+    
+    # Determina i vecchi risultati (per rollback)
+    if old_home_score > old_away_score:
+        old_home_result = "win"
+        old_away_result = "loss"
+    elif old_away_score > old_home_score:
+        old_home_result = "loss"
+        old_away_result = "win"
+    else:
+        old_home_result = "draw"
+        old_away_result = "draw"
+    
+    # ROLLBACK: sottrai i punti vecchi
+    _apply_match_stats(client, old_home_squad_id, old_sport, -old_home_points, -old_home_score, -old_away_score, old_home_result)
+    _apply_match_stats(client, old_away_squad_id, old_sport, -old_away_points, -old_away_score, -old_home_score, old_away_result)
+    _distribute_squad_points(client, old_home_squad_id, -old_home_points)
+    _distribute_squad_points(client, old_away_squad_id, -old_away_points)
+
+    # Calcola i NUOVI punti e risultati
+    sport_key = str(payload.get("sport") or row.get("sport") or "calcio").strip().lower()
+    stage = str(payload.get("stage") or row.get("stage") or "group").strip().lower()
+    home_score = int(payload.get("home_score") if payload.get("home_score") is not None else (row.get("home_score") or 0))
+    away_score = int(payload.get("away_score") if payload.get("away_score") is not None else (row.get("away_score") or 0))
+
+    home_points = 0
+    away_points = 0
+    if sport_key == "calcio":
+        if home_score > away_score:
+            home_points, away_points = 3, 0
+        elif away_score > home_score:
+            home_points, away_points = 0, 3
+        else:
+            home_points, away_points = 1, 1
+    elif sport_key == "pallavolo":
+        if home_score > away_score:
+            home_points, away_points = 3, 1
+        elif away_score > home_score:
+            home_points, away_points = 1, 3
+        else:
+            home_points, away_points = 2, 2
+    else:
+        if home_score > away_score:
+            home_points, away_points = 1, 0
+        elif away_score > home_score:
+            home_points, away_points = 0, 1
+        else:
+            home_points, away_points = 1, 1
+
+    # Determina i nuovi risultati
+    if home_score > away_score:
+        home_result = "win"
+        away_result = "loss"
+    elif away_score > home_score:
+        home_result = "loss"
+        away_result = "win"
+    else:
+        home_result = "draw"
+        away_result = "draw"
+
+    # APPLICA i NUOVI punti
+    _apply_match_stats(client, old_home_squad_id, sport_key, home_points, home_score, away_score, home_result)
+    _apply_match_stats(client, old_away_squad_id, sport_key, away_points, away_score, home_score, away_result)
+    _distribute_squad_points(client, old_home_squad_id, home_points)
+    _distribute_squad_points(client, old_away_squad_id, away_points)
+
+    update_data = {
+        "sport": sport_key,
+        "stage": stage,
+        "home_score": home_score,
+        "away_score": away_score,
+        "home_points_awarded": home_points,
+        "away_points_awarded": away_points,
+    }
+
+    client.table("matches").update(update_data).eq("id", match_id).execute()
+    return {"status": "ok", "match_id": match_id, "updated": list(update_data.keys())}
+
+
+@router.delete("/admin/matches/{match_id}")
+def admin_delete_match(match_id: int, client=Depends(get_supabase_client), x_admin_token: str = Header(None)):
+    """Elimina una partita registrata (admin) con rollback automatico di punti."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    # Ottieni la partita PRIMA di eliminarla
+    current = client.table("matches").select(
+        "id, sport, home_squad_id, away_squad_id, home_score, away_score, home_points_awarded, away_points_awarded"
+    ).eq("id", match_id).limit(1).execute()
+    if not current.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
+
+    row = current.data[0]
+    home_squad_id = int(row.get("home_squad_id"))
+    away_squad_id = int(row.get("away_squad_id"))
+    home_score = int(row.get("home_score") or 0)
+    away_score = int(row.get("away_score") or 0)
+    home_points = int(row.get("home_points_awarded") or 0)
+    away_points = int(row.get("away_points_awarded") or 0)
+    sport = (row.get("sport") or "calcio").strip().lower()
+
+    # Determina i risultati attuali
+    if home_score > away_score:
+        home_result = "win"
+        away_result = "loss"
+    elif away_score > home_score:
+        home_result = "loss"
+        away_result = "win"
+    else:
+        home_result = "draw"
+        away_result = "draw"
+
+    # ROLLBACK: sottrai i punti
+    _apply_match_stats(client, home_squad_id, sport, -home_points, -home_score, -away_score, home_result)
+    _apply_match_stats(client, away_squad_id, sport, -away_points, -away_score, -home_score, away_result)
+    _distribute_squad_points(client, home_squad_id, -home_points)
+    _distribute_squad_points(client, away_squad_id, -away_points)
+
+    # Elimina la partita
+    client.table("matches").delete().eq("id", match_id).execute()
+    return {"status": "ok", "match_id": match_id}

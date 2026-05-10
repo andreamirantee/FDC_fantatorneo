@@ -96,6 +96,47 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
             except Exception:
                 # non bloccare la risposta se il DB fallisce qui
                 pass
+
+            # Bonus team: restituisce elenco bonus e totale punti bonus.
+            try:
+                bonus_res = (
+                    client.table("bonus")
+                    .select("id, name, points, reason, sport, participant_id, awarded_at, is_active")
+                    .eq("team_id", int(team_id))
+                    .order("awarded_at", desc=True)
+                    .execute()
+                )
+                bonus_rows = bonus_res.data if bonus_res and getattr(bonus_res, "data", None) else []
+
+                normalized_bonus = []
+                bonus_total = 0
+                for row in bonus_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    try:
+                        pts = int(row.get("points") or 0)
+                    except Exception:
+                        pts = 0
+                    bonus_total += pts
+                    normalized_bonus.append(
+                        {
+                            "id": row.get("id"),
+                            "name": row.get("name") or "Bonus",
+                            "points": pts,
+                            "reason": row.get("reason") or "Motivo non specificato",
+                            "sport": row.get("sport"),
+                            "participant_id": row.get("participant_id"),
+                            "awarded_at": row.get("awarded_at"),
+                            "is_active": bool(row.get("is_active", True)),
+                        }
+                    )
+
+                result["bonus_items"] = normalized_bonus
+                result["bonus_total"] = bonus_total
+            except Exception:
+                # se la tabella bonus non esiste ancora o fallisce, non bloccare /users/me
+                result["bonus_items"] = []
+                result["bonus_total"] = 0
     except Exception:
         pass
 
