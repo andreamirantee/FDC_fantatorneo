@@ -145,7 +145,7 @@ def serve_market_test():
         
         .ranking-container {{
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: 1fr;
             gap: 20px;
         }}
         .ranking-table {{
@@ -493,9 +493,17 @@ def serve_market_test():
             
             <div class="panel active" id="ranking">
                 <h2>Classifiche degli sport</h2>
-                <p style="color: #666; margin: 10px 0 30px; font-size: 14px;">
-                    Visualizzazione delle classifiche divise per sport principali
+                <p style="color: #666; margin: 10px 0 20px; font-size: 14px;">
+                    Seleziona uno sport per visualizzare la relativa classifica
                 </p>
+                <div style="margin-bottom: 20px;">
+                    <label for="sportSelector" style="font-weight: 600; color: #333; margin-right: 10px;">Seleziona Sport:</label>
+                    <select id="sportSelector" onchange="renderRankingBySport(this.value)" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                        <option value="Calcio">⚽ Calcio</option>
+                        <option value="Pallavolo">🏐 Pallavolo</option>
+                        <option value="Padel">🎾 Padel</option>
+                    </select>
+                </div>
                 <div class="ranking-container" id="rankingContainer">
                     <div style="text-align: center; grid-column: 1/-1; padding: 40px; color: #999;">
                         Caricamento classifica...
@@ -717,68 +725,25 @@ def serve_market_test():
                 try {{
                     const statusEl = document.getElementById('fetchStatus');
                     if (statusEl) statusEl.textContent = 'Caricamento classifica in corso...';
-                    console.log('loadRanking: fetching', API_BASE + '/market/ranking', API_BASE + '/market/volley/structure');
-                const [rankingRes, volleyRes] = await Promise.all([
+                    console.log('loadRanking: fetching ranking and structures');
+                const [rankingRes, calcioRes, volleyRes, padelRes] = await Promise.all([
                     fetch(`${{API_BASE}}/market/ranking`),
-                    fetch(`${{API_BASE}}/market/volley/structure`)
+                    fetch(`${{API_BASE}}/market/structure/calcio`),
+                    fetch(`${{API_BASE}}/market/structure/volley`),
+                    fetch(`${{API_BASE}}/market/structure/padel`)
                 ]);
                 const payload = await rankingRes.json();
-                const ranking = Array.isArray(payload) ? payload : [];
-                const volleyPayload = volleyRes.ok ? await volleyRes.json() : null;
+                window.globalRanking = Array.isArray(payload) ? payload : [];
+                window.globalCalcioStructure = calcioRes.ok ? await calcioRes.json() : null;
+                window.globalVolleyPayload = volleyRes.ok ? await volleyRes.json() : null;
+                window.globalPadelStructure = padelRes.ok ? await padelRes.json() : null;
 
                 if (!rankingRes.ok) {{
                     throw new Error((payload && payload.detail) ? payload.detail : 'Errore caricamento classifica');
                 }}
 
-                const sports = ['Calcio', 'Pallavolo', 'Padel'];
-                let html = '';
-
-                sports.forEach((sport) => {{
-                    const sportRanking = ranking.filter(item => (String(item.sport || item.role || '').toLowerCase() === sport.toLowerCase()));
-                    const isCalcio = sport.toLowerCase() === 'calcio';
-
-                    if (sport.toLowerCase() === 'pallavolo' && volleyPayload) {{
-                        html += renderVolleyStructure(volleyPayload);
-                        return;
-                    }}
-
-                    html += `
-                        <div class="ranking-table">
-                            <h3>🏆 ${{sport}}</h3>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Pos</th>
-                                        <th>Squadra</th>
-                                        <th>PF</th>
-                                        <th>V</th>
-                                        <th>S</th>
-                                        <th>${{isCalcio ? 'GF' : 'SV'}}</th>
-                                        <th>${{isCalcio ? 'GS' : 'SP'}}</th>
-                                        ${{isCalcio ? '<th>DR</th>' : ''}}\n                                        <th>Pti</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${{sportRanking.length ? sportRanking.map((team, i) => `
-                                        <tr onclick="showDetailModal(${{JSON.stringify(team).replace(/"/g, '&quot;')}})" style="cursor: pointer;">
-                                            <td>${{i + 1}}</td>
-                                            <td>${{team.name || 'Squadra ' + team.id}}</td>
-                                            <td>${{team.matches_played || 0}}</td>
-                                            <td>${{team.wins || 0}}</td>
-                                            <td>${{team.losses || 0}}</td>
-                                            <td>${{isCalcio ? (team.goals_for || 0) : (team.sets_won || 0)}}</td>
-                                            <td>${{isCalcio ? (team.goals_against || 0) : (team.sets_lost || 0)}}</td>
-                                            ${{isCalcio ? `<td>${{(team.goals_for || 0) - (team.goals_against || 0)}}</td>` : ''}}
-                                            <td>${{team.points ?? team.score ?? 0}}</td>
-                                        </tr>
-                                    `).join('') : `<tr><td colspan="${{isCalcio ? 9 : 8}}" style="text-align:center; color:#999;">Nessuna squadra</td></tr>`}}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                }});
-                
-                document.getElementById('rankingContainer').innerHTML = html;
+                // Renderizza il primo sport (Calcio) di default
+                renderRankingBySport('Calcio');
                 const statusElDone = document.getElementById('fetchStatus');
                 if (statusElDone) statusElDone.textContent = '';
                 }} catch (err) {{
@@ -788,6 +753,184 @@ def serve_market_test():
                 document.getElementById('rankingContainer').innerHTML = 
                     '<p style="grid-column: 1/-1; color: #d32f2f;">Errore caricamento classifica</p>';
             }}
+        }}
+        
+        function renderRankingBySport(sport) {{
+            const ranking = window.globalRanking || [];
+            let html = '';
+            const sportKey = sport.toLowerCase();
+            
+            // Scegli la struttura giusta in base allo sport
+            let structure = null;
+            if (sportKey === 'pallavolo') {{
+                structure = window.globalVolleyPayload;
+            }} else if (sportKey === 'calcio') {{
+                structure = window.globalCalcioStructure;
+            }} else if (sportKey === 'padel') {{
+                structure = window.globalPadelStructure;
+            }}
+            
+            // Se esiste una struttura con gironi e fasi finali, renderizzala con i tab
+            if (structure && structure.groups) {{
+                html = renderSportStructure(sport, structure);
+            }} else {{
+                // Altrimenti mostra la classifica semplice
+                const sportRanking = ranking.filter(item => (String(item.sport || item.role || '').toLowerCase() === sportKey));
+                const isCalcio = sportKey === 'calcio';
+                
+                html = `
+                    <div class="ranking-table">
+                        <h3>🏆 ${{sport}}</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th>Squadra</th>
+                                    <th>PF</th>
+                                    <th>V</th>
+                                    <th>S</th>
+                                    <th>${{isCalcio ? 'GF' : 'SV'}}</th>
+                                    <th>${{isCalcio ? 'GS' : 'SP'}}</th>
+                                    ${{isCalcio ? '<th>DR</th>' : ''}}
+                                    <th>Pti</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${{sportRanking.length ? sportRanking.map((team, i) => `
+                                    <tr onclick="showDetailModal(${{JSON.stringify(team).replace(/"/g, '&quot;')}})" style="cursor: pointer;">
+                                        <td>${{i + 1}}</td>
+                                        <td>${{team.name || 'Squadra ' + team.id}}</td>
+                                        <td>${{team.matches_played || 0}}</td>
+                                        <td>${{team.wins || 0}}</td>
+                                        <td>${{team.losses || 0}}</td>
+                                        <td>${{isCalcio ? (team.goals_for || 0) : (team.sets_won || 0)}}</td>
+                                        <td>${{isCalcio ? (team.goals_against || 0) : (team.sets_lost || 0)}}</td>
+                                        ${{isCalcio ? `<td>${{(team.goals_for || 0) - (team.goals_against || 0)}}</td>` : ''}}
+                                        <td>${{team.points ?? team.score ?? 0}}</td>
+                                    </tr>
+                                `).join('') : `<tr><td colspan="${{isCalcio ? 9 : 8}}" style="text-align:center; color:#999;">Nessuna squadra</td></tr>`}}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }}
+            
+            document.getElementById('rankingContainer').innerHTML = html;
+        }}
+        
+        function renderSportStructure(sport, data) {{
+            const sportKey = sport.toLowerCase();
+            const icons = {{
+                'calcio': '⚽',
+                'pallavolo': '🏐',
+                'padel': '🎾'
+            }};
+            const icon = icons[sportKey] || '🏆';
+            
+            const groupA = (data && data.groups && data.groups.A) ? data.groups.A : [];
+            const groupB = (data && data.groups && data.groups.B) ? data.groups.B : [];
+            const finals = (data && data.finals) ? data.finals : {{}};
+            
+            const isCalcio = sportKey === 'calcio';
+            const isPadel = sportKey === 'padel';
+
+            const renderGroup = (title, teams) => {{
+                const rows = teams.length ? teams.map((team, i) => `
+                    <tr onclick="showDetailModal(${{JSON.stringify(team).replace(/"/g, '&quot;')}})" style="cursor: pointer;">
+                        <td>${{i + 1}}</td>
+                        <td>${{team.name || 'Squadra ' + team.id}}</td>
+                        <td>${{team.matches_played || 0}}</td>
+                        <td>${{team.wins || 0}}</td>
+                        <td>${{team.losses || 0}}</td>
+                        <td>${{isCalcio ? (team.goals_for || 0) : isPadel ? (team.sets_won || 0) : (team.sets_won || 0)}}</td>
+                        <td>${{isCalcio ? (team.goals_against || 0) : isPadel ? (team.sets_lost || 0) : (team.sets_lost || 0)}}</td>
+                        ${{isCalcio ? `<td>${{(team.goals_for || 0) - (team.goals_against || 0)}}</td>` : ''}}
+                        <td>${{team.points || 0}}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="' + (isCalcio ? 9 : 8) + '" style="text-align:center; color:#999;">Nessuna squadra</td></tr>';
+
+                return `
+                    <div class="ranking-table">
+                        <h3>${{icon}} ${{title}}</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th>Squadra</th>
+                                    <th>PF</th>
+                                    <th>V</th>
+                                    <th>S</th>
+                                    <th>${{isCalcio ? 'GF' : 'SV'}}</th>
+                                    <th>${{isCalcio ? 'GS' : 'SP'}}</th>
+                                    ${{isCalcio ? '<th>DR</th>' : ''}}
+                                    <th>Pti</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${{rows}}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }};
+
+            const formatTeamName = (team) => team ? (team.name || ('Squadra ' + team.id)) : '-';
+            const formatScore = (pair) => {{
+                if (!pair || !pair.match || !pair.home || !pair.away) return '-';
+                const match = pair.match;
+                const homeScore = match.home_score ?? 0;
+                const awayScore = match.away_score ?? 0;
+                return match.home_squad_id === pair.home.id ? `${{homeScore}}-${{awayScore}}` : `${{awayScore}}-${{homeScore}}`;
+            }};
+
+            const renderFinalRow = (label, pair) => `
+                <tr>
+                    <td>${{label}}</td>
+                    <td>${{formatTeamName(pair.home)}}</td>
+                    <td>${{formatTeamName(pair.away)}}</td>
+                    <td>${{formatScore(pair)}}</td>
+                </tr>
+            `;
+
+            const renderFinalsTable = () => `
+                <div class="ranking-table">
+                    <h3>${{icon}} Fasi Finali</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fase</th>
+                                <th>Squadra</th>
+                                <th>Squadra</th>
+                                <th>Risultato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${{renderFinalRow('Finale 5/6', finals.fifth_sixth || {{}})}}
+                            ${{renderFinalRow('Finale 3/4', finals.third_fourth || {{}})}}
+                            ${{renderFinalRow('Finale 1/2', finals.final || {{}})}}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            return `
+                <div class="volley-container">
+                    <div class="volley-tabs">
+                        <button class="volley-tab-btn active" onclick="switchVolleyTab(event, 'volley-groupA')">Girone A</button>
+                        <button class="volley-tab-btn" onclick="switchVolleyTab(event, 'volley-groupB')">Girone B</button>
+                        <button class="volley-tab-btn" onclick="switchVolleyTab(event, 'volley-finals')">Fasi Finali</button>
+                    </div>
+                    <div id="volley-groupA" class="volley-tab-content active">
+                        ${{renderGroup('Girone A', groupA)}}
+                    </div>
+                    <div id="volley-groupB" class="volley-tab-content">
+                        ${{renderGroup('Girone B', groupB)}}
+                    </div>
+                    <div id="volley-finals" class="volley-tab-content">
+                        ${{renderFinalsTable()}}
+                    </div>
+                </div>
+            `;
         }}
         
         async function loadParticipants() {{
@@ -981,9 +1124,9 @@ def serve_market_test():
                 const bonusRows = bonusItems.length
                     ? bonusItems.map(item => `
                         <tr>
-                            <td>${{item.name || 'Bonus'}}</td>
-                            <td>${{item.points || 0}}</td>
+                            <td>${{item.participant_name || 'Squadra N/D'}}</td>
                             <td>${{item.reason || 'Motivo non specificato'}}</td>
+                            <td>${{item.points || 0}}</td>
                         </tr>
                     `).join('')
                     : '<tr><td colspan="3" style="opacity:0.8;">Nessun bonus registrato</td></tr>';
@@ -1027,9 +1170,9 @@ def serve_market_test():
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Bonus</th>
+                                    <th>Squadra</th>
+                                    <th>Motivo Bonus</th>
                                     <th>Punti</th>
-                                    <th>Motivo</th>
                                 </tr>
                             </thead>
                             <tbody>

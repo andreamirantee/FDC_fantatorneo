@@ -481,15 +481,105 @@ def serve_admin_panel():
 
 			<div class="section-block">
 				<div class="section-title">Bonus</div>
-				<div class="section-hint">Sezione progettuale bonus. Tipologie in definizione.</div>
+				<div class="section-hint">Assegna bonus e malus alle squadre.</div>
 				<div class="panel">
-					<div class="bonus-placeholder">
-						<button disabled>Bonus Fair Play</button>
-						<button disabled>Bonus Vittoria</button>
-						<button disabled>Bonus Clean Sheet</button>
-						<button disabled>Bonus Rimonta</button>
-						<button disabled>Bonus Goal Difference</button>
-						<button disabled>Bonus MVP</button>
+					<h3 style="margin-bottom: 15px;">➕ Bonus</h3>
+					<div class="bonus-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+						<button class="btn btn-primary" onclick="openBonusModal('outfit', 'Squadra vestita abbinata', 20)">Abbigliamento +20</button>
+						<button class="btn btn-primary" onclick="openBonusModal('esultanza', 'Esultanza originale', 20)">Esultanza +20</button>
+						<button class="btn btn-primary" onclick="openBonusModal('puntuale', 'Squadra puntuale', 30)">Puntuale +30</button>
+						<button class="btn btn-primary" onclick="openBonusModal('vittoria', 'Squadra vince partita', 50)">Vittoria +50</button>
+						<button class="btn btn-primary" onclick="openBonusModal('pareggio', 'Pareggio', 10)">Pareggio +10</button>
+						<button class="btn btn-primary" onclick="openBonusModal('torneo', 'Vince torneo', 100)">Torneo +100</button>
+						<button class="btn btn-primary" onclick="openBonusModal('scarpe_colore', 'Scarpe colore diverso', 15)">Scarpe colorate +15</button>
+						<button class="btn btn-primary" onclick="openBonusModal('rigore', 'Rigore segnato (Calcio)', 20)">Rigore segnato +20</button>
+						<button class="btn btn-primary" onclick="openBonusModal('ginocchiere', 'Ginocchiere colore diverso (Volley)', 15)">Ginocchiere +15</button>
+						<button class="btn btn-primary" onclick="openBonusModal('gol_tanti', 'Più di 3 gol (Calcio)', 20)">3+ gol +20</button>
+					</div>
+					<h3 style="margin-bottom: 15px;">➖ Malus</h3>
+					<div class="bonus-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+						<button class="btn btn-danger" onclick="openBonusModal('ritardo', 'Squadra in ritardo', -30)">In ritardo -30</button>
+						<button class="btn btn-danger" onclick="openBonusModal('fallo', 'Fallo', -25)">Fallo -25</button>
+						<button class="btn btn-danger" onclick="openBonusModal('sconfitta', 'Squadra perde', -35)">Sconfitta -35</button>
+						<button class="btn btn-danger" onclick="openBonusModal('gol_zero', '0 gol (Calcio)', -20)">0 gol -20</button>
+						<button class="btn btn-danger" onclick="openBonusModal('rigore_subito', 'Rigore subito (Calcio)', -15)">Rigore subito -15</button>
+						<button class="btn btn-danger" onclick="openBonusModal('litigio', 'Litigio durante partita', -40)">Litigio -40</button>
+						<button class="btn btn-danger" onclick="openBonusModal('set_zero', '0 punti set (Volley)', -20)">0 punti set -20</button>
+						<button class="btn btn-danger" onclick="openBonusModal('padel_zero', '0 punti (Padel)', -20)">0 punti padel -20</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="section-block">
+				<div class="section-title">Elimina Bonus/Malus</div>
+				<div class="section-hint">Rimuovi bonus e malus dalle squadre.</div>
+				<div class="panel">
+					<button class="btn btn-danger" onclick="openRemoveBonusModal()" style="width: 100%; margin-bottom: 20px;">🗑️ Elimina Bonus/Malus</button>
+				</div>
+			</div>
+
+			<!-- Modal Bonus/Malus -->
+			<div id="bonusModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+				<div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; color: #e5e7eb;">
+					<h2 id="bonusModalTitle" style="margin-bottom: 15px;"></h2>
+					<div style="margin-bottom: 15px;">
+						<label style="display: block; margin-bottom: 8px; font-weight: 600;">Filtro Sport:</label>
+						<select id="bonusSportFilter" onchange="filterBonusParticipants()" style="width: 100%; padding: 8px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+							<option value="">Tutti</option>
+							<option value="calcio">Calcio</option>
+							<option value="pallavolo">Pallavolo</option>
+							<option value="padel">Padel</option>
+						</select>
+					</div>
+					<div style="margin-bottom: 15px;">
+						<label style="display: block; margin-bottom: 8px; font-weight: 600;">Cerca Squadra:</label>
+						<input type="text" id="bonusSearchInput" placeholder="Nome o ID..." onkeyup="filterBonusParticipants()" style="width: 100%; padding: 8px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px; box-sizing: border-box;">
+					</div>
+					<div style="margin-bottom: 15px; max-height: 250px; overflow-y: auto; border: 1px solid #374151; border-radius: 6px;">
+						<div id="bonusParticipantsList" style="padding: 10px;"></div>
+					</div>
+					<div style="display: flex; gap: 10px;">
+						<button class="btn btn-primary" onclick="confirmBonusAssignment()">Assegna</button>
+						<button class="btn" onclick="closeBonusModal()" style="background: #374151; color: #e5e7eb;">Annulla</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modal Rimuovi Bonus/Malus -->
+			<div id="removeBonusModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+				<div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; color: #e5e7eb;">
+					<h2 style="margin-bottom: 15px;">Elimina Bonus/Malus</h2>
+					<div style="margin-bottom: 15px;">
+						<label style="display: block; margin-bottom: 8px; font-weight: 600;">Filtro Sport:</label>
+						<select id="removeBonusSportFilter" onchange="filterRemoveBonusParticipants()" style="width: 100%; padding: 8px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
+							<option value="">Tutti</option>
+							<option value="calcio">Calcio</option>
+							<option value="pallavolo">Pallavolo</option>
+							<option value="padel">Padel</option>
+						</select>
+					</div>
+					<div style="margin-bottom: 15px;">
+						<label style="display: block; margin-bottom: 8px; font-weight: 600;">Cerca Squadra:</label>
+						<input type="text" id="removeBonusSearchInput" placeholder="Nome o ID..." onkeyup="filterRemoveBonusParticipants()" style="width: 100%; padding: 8px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px; box-sizing: border-box;">
+					</div>
+					<div style="margin-bottom: 15px; max-height: 250px; overflow-y: auto; border: 1px solid #374151; border-radius: 6px;">
+						<div id="removeBonusParticipantsList" style="padding: 10px;"></div>
+					</div>
+					<div style="display: flex; gap: 10px;">
+						<button class="btn btn-danger" onclick="openRemoveBonusTypeSelection()">Seleziona Bonus</button>
+						<button class="btn" onclick="closeRemoveBonusModal()" style="background: #374151; color: #e5e7eb;">Annulla</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modal Seleziona Bonus da Rimuovere -->
+			<div id="removeBonusTypeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
+				<div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; color: #e5e7eb;">
+					<h2 style="margin-bottom: 15px;">Seleziona Bonus/Malus da Eliminare</h2>
+					<div id="removeBonusTypeList" style="margin-bottom: 15px; max-height: 400px; overflow-y: auto; border: 1px solid #374151; border-radius: 6px;"></div>
+					<div style="display: flex; gap: 10px;">
+						<button class="btn btn-danger" onclick="confirmRemoveBonus()">Elimina</button>
+						<button class="btn" onclick="closeRemoveBonusTypeModal()" style="background: #374151; color: #e5e7eb;">Annulla</button>
 					</div>
 				</div>
 			</div>
@@ -596,7 +686,7 @@ def serve_admin_panel():
 				if (awayScore > homeScore) return { home: 0, away: 3 };
 				return { home: 1, away: 1 };
 			}
-			if (sport === 'pallavolo') {
+			if (sport === 'pallavolo' || sport === 'padel') {
 				if (homeScore > awayScore) return { home: 3, away: 1 };
 				if (awayScore > homeScore) return { home: 1, away: 3 };
 				return { home: 2, away: 2 };
@@ -897,7 +987,8 @@ def serve_admin_panel():
 			const gf = parseInt(document.getElementById(`gf_${participantId}`).value) || 0;
 			const gs = parseInt(document.getElementById(`gs_${participantId}`).value) || 0;
 			const points = parseInt(document.getElementById(`points_${participantId}`).value) || 0;
-			const groupCode = document.getElementById(`group_${participantId}`).value;
+			const groupCodeValue = document.getElementById(`group_${participantId}`).value;
+			const groupCode = groupCodeValue === "" ? null : groupCodeValue;
 			const sportKey = rowSport.toLowerCase();
 			const isCal = sportKey === 'calcio';
 			const payload = {
@@ -1336,6 +1427,255 @@ def serve_admin_panel():
 			} catch (err) {
 				console.error('Errore caricamento team:', err);
 			}
+		}
+
+		// Bonus/Malus management
+		let currentBonusData = { type: '', description: '', points: 0, participantId: null, allParticipants: [] };
+
+		async function openBonusModal(bonusType, description, points) {
+			currentBonusData = { type: bonusType, description, points, participantId: null, allParticipants: [] };
+			document.getElementById('bonusModalTitle').textContent = `${description} (${points > 0 ? '+' : ''}${points} pt)`;
+			document.getElementById('bonusSportFilter').value = '';
+			document.getElementById('bonusSearchInput').value = '';
+
+			try {
+				const res = await fetch(`${API_BASE}/market/ranking`);
+				const ranking = await res.json();
+				currentBonusData.allParticipants = ranking || [];
+				filterBonusParticipants();
+			} catch (err) {
+				console.error('Errore caricamento partecipanti:', err);
+				document.getElementById('bonusParticipantsList').innerHTML = '<p style="color:#fca5a5;">Errore caricamento</p>';
+			}
+
+			document.getElementById('bonusModal').style.display = 'flex';
+		}
+
+		function filterBonusParticipants() {
+			const sport = document.getElementById('bonusSportFilter').value.toLowerCase();
+			const search = document.getElementById('bonusSearchInput').value.toLowerCase();
+
+			let filtered = currentBonusData.allParticipants;
+			if (sport) {
+				filtered = filtered.filter(p => (p.sport || p.role || '').toLowerCase() === sport);
+			}
+			if (search) {
+				filtered = filtered.filter(p => {
+					const name = (p.name || '').toLowerCase();
+					const id = String(p.id || '');
+					const composed = (p.composed_of || '').toLowerCase();
+					return name.includes(search) || id.includes(search) || composed.includes(search);
+				});
+			}
+
+			const html = filtered.map(p => `
+				<div onclick="selectBonusParticipant(${p.id})" style="padding: 10px; background: #111827; margin-bottom: 5px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='transparent'">
+					<strong>${p.name || 'Squadra ' + p.id}</strong> (${p.sport || 'N/A'})<br>
+					<small style="color: #9ca3af;">ID: ${p.id} | Punti: ${p.points || 0}</small>
+					${p.composed_of ? `<br><small style="color: #9ca3af;">Comp: ${p.composed_of.substring(0, 40)}...</small>` : ''}
+				</div>
+			`).join('');
+
+			document.getElementById('bonusParticipantsList').innerHTML = html || '<p style="color:#9ca3af;">Nessuna squadra trovata</p>';
+		}
+
+		function selectBonusParticipant(participantId) {
+			currentBonusData.participantId = participantId;
+			// Highlight selected
+			document.querySelectorAll('#bonusParticipantsList div').forEach((el, idx) => {
+				el.style.borderColor = (idx === currentBonusData.allParticipants.findIndex(p => p.id === participantId)) ? '#10b981' : 'transparent';
+			});
+		}
+
+		async function confirmBonusAssignment() {
+			if (!currentBonusData.participantId) {
+				alert('Seleziona una squadra');
+				return;
+			}
+
+			const token = getAdminToken();
+			if (!token) {
+				alert('✗ Admin token required');
+				return;
+			}
+
+			try {
+				const participant = currentBonusData.allParticipants.find(p => p.id === currentBonusData.participantId);
+				const currentScore = participant.score || 0;
+				const newScore = currentScore + currentBonusData.points;
+
+				const res = await fetch(`${API_BASE}/market/admin/participants/${currentBonusData.participantId}`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Admin-Token': token
+					},
+					body: JSON.stringify({ score: newScore })
+				});
+
+				if (res.ok) {
+					alert(`✓ ${currentBonusData.description} assegnato a ${participant.name}`);
+					closeBonusModal();
+					loadAdminData();
+				} else {
+					const err = await readResponseMessage(res);
+					alert(`✗ Errore: ${err}`);
+				}
+			} catch (err) {
+				alert(`✗ Errore: ${err.message}`);
+			}
+		}
+
+		function closeBonusModal() {
+			document.getElementById('bonusModal').style.display = 'none';
+		}
+
+		// Rimozione Bonus/Malus
+		let currentRemoveBonusData = { participantId: null, bonusType: '', bonusPoints: 0, allParticipants: [], bonusDefinitions: [
+			{ type: 'outfit', name: 'Abbigliamento', points: 20 },
+			{ type: 'esultanza', name: 'Esultanza', points: 20 },
+			{ type: 'puntuale', name: 'Puntuale', points: 30 },
+			{ type: 'vittoria', name: 'Vittoria', points: 50 },
+			{ type: 'pareggio', name: 'Pareggio', points: 10 },
+			{ type: 'torneo', name: 'Torneo', points: 100 },
+			{ type: 'scarpe_colore', name: 'Scarpe colorate', points: 15 },
+			{ type: 'rigore', name: 'Rigore segnato', points: 20 },
+			{ type: 'ginocchiere', name: 'Ginocchiere', points: 15 },
+			{ type: 'gol_tanti', name: '3+ gol', points: 20 },
+			{ type: 'ritardo', name: 'In ritardo', points: -30 },
+			{ type: 'fallo', name: 'Fallo', points: -25 },
+			{ type: 'sconfitta', name: 'Sconfitta', points: -35 },
+			{ type: 'gol_zero', name: '0 gol', points: -20 },
+			{ type: 'rigore_subito', name: 'Rigore subito', points: -15 },
+			{ type: 'litigio', name: 'Litigio', points: -40 },
+			{ type: 'set_zero', name: '0 punti set', points: -20 },
+			{ type: 'padel_zero', name: '0 punti padel', points: -20 }
+		]};
+
+		async function openRemoveBonusModal() {
+			document.getElementById('removeBonusSportFilter').value = '';
+			document.getElementById('removeBonusSearchInput').value = '';
+
+			try {
+				const res = await fetch(`${API_BASE}/market/ranking`);
+				const ranking = await res.json();
+				currentRemoveBonusData.allParticipants = ranking || [];
+				filterRemoveBonusParticipants();
+			} catch (err) {
+				console.error('Errore caricamento partecipanti:', err);
+				document.getElementById('removeBonusParticipantsList').innerHTML = '<p style="color:#fca5a5;">Errore caricamento</p>';
+			}
+
+			document.getElementById('removeBonusModal').style.display = 'flex';
+		}
+
+		function filterRemoveBonusParticipants() {
+			const sport = document.getElementById('removeBonusSportFilter').value.toLowerCase();
+			const search = document.getElementById('removeBonusSearchInput').value.toLowerCase();
+
+			let filtered = currentRemoveBonusData.allParticipants;
+			if (sport) {
+				filtered = filtered.filter(p => (p.sport || p.role || '').toLowerCase() === sport);
+			}
+			if (search) {
+				filtered = filtered.filter(p => {
+					const name = (p.name || '').toLowerCase();
+					const id = String(p.id || '');
+					const composed = (p.composed_of || '').toLowerCase();
+					return name.includes(search) || id.includes(search) || composed.includes(search);
+				});
+			}
+
+			const html = filtered.map(p => `
+				<div onclick="selectRemoveBonusParticipant(${p.id})" style="padding: 10px; background: #111827; margin-bottom: 5px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='transparent'">
+					<strong>${p.name || 'Squadra ' + p.id}</strong> (${p.sport || 'N/A'})<br>
+					<small style="color: #9ca3af;">ID: ${p.id} | Punti: ${p.points || 0}</small>
+				</div>
+			`).join('');
+
+			document.getElementById('removeBonusParticipantsList').innerHTML = html || '<p style="color:#9ca3af;">Nessuna squadra trovata</p>';
+		}
+
+		function selectRemoveBonusParticipant(participantId) {
+			currentRemoveBonusData.participantId = participantId;
+			// Highlight selected
+			document.querySelectorAll('#removeBonusParticipantsList div').forEach((el, idx) => {
+				el.style.borderColor = (idx === currentRemoveBonusData.allParticipants.findIndex(p => p.id === participantId)) ? '#10b981' : 'transparent';
+			});
+		}
+
+		function openRemoveBonusTypeSelection() {
+			if (!currentRemoveBonusData.participantId) {
+				alert('Seleziona una squadra');
+				return;
+			}
+
+			const html = currentRemoveBonusData.bonusDefinitions.map(b => `
+				<div onclick="selectRemoveBonusType('${b.type}', ${b.points})" style="padding: 12px; background: #111827; margin-bottom: 8px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#0f172a';" onmouseout="this.style.borderColor='transparent'; this.style.background='#111827';">
+					<strong>${b.name}</strong> (${b.points > 0 ? '+' : ''}${b.points} pt)
+				</div>
+			`).join('');
+
+			document.getElementById('removeBonusTypeList').innerHTML = html;
+			document.getElementById('removeBonusTypeModal').style.display = 'flex';
+		}
+
+		function selectRemoveBonusType(bonusType, bonusPoints) {
+			currentRemoveBonusData.bonusType = bonusType;
+			currentRemoveBonusData.bonusPoints = bonusPoints;
+			// Highlight selected
+			document.querySelectorAll('#removeBonusTypeList div').forEach(el => {
+				el.style.borderColor = el.textContent.includes(bonusType) ? '#ef4444' : 'transparent';
+			});
+		}
+
+		async function confirmRemoveBonus() {
+			if (!currentRemoveBonusData.bonusType) {
+				alert('Seleziona un bonus/malus');
+				return;
+			}
+
+			const token = getAdminToken();
+			if (!token) {
+				alert('✗ Admin token required');
+				return;
+			}
+
+			try {
+				const participant = currentRemoveBonusData.allParticipants.find(p => p.id === currentRemoveBonusData.participantId);
+				const currentScore = participant.score || 0;
+				const newScore = currentScore - currentRemoveBonusData.bonusPoints;
+
+				const res = await fetch(`${API_BASE}/market/admin/participants/${currentRemoveBonusData.participantId}`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Admin-Token': token
+					},
+					body: JSON.stringify({ score: newScore })
+				});
+
+				if (res.ok) {
+					const bonusName = currentRemoveBonusData.bonusDefinitions.find(b => b.type === currentRemoveBonusData.bonusType)?.name || 'Bonus';
+					alert(`✓ ${bonusName} eliminato da ${participant.name}`);
+					closeRemoveBonusTypeModal();
+					closeRemoveBonusModal();
+					loadAdminData();
+				} else {
+					const err = await readResponseMessage(res);
+					alert(`✗ Errore: ${err}`);
+				}
+			} catch (err) {
+				alert(`✗ Errore: ${err.message}`);
+			}
+		}
+
+		function closeRemoveBonusModal() {
+			document.getElementById('removeBonusModal').style.display = 'none';
+		}
+
+		function closeRemoveBonusTypeModal() {
+			document.getElementById('removeBonusTypeModal').style.display = 'none';
 		}
 
 		document.addEventListener('DOMContentLoaded', initAdminToken);

@@ -601,6 +601,16 @@ def record_match(
             else:
                 home_points = 2
                 away_points = 2
+        elif sport_key == "padel":
+            if payload.home_score > payload.away_score:
+                home_points = 3
+                away_points = 1
+            elif payload.away_score > payload.home_score:
+                home_points = 1
+                away_points = 3
+            else:
+                home_points = 2
+                away_points = 2
         else:
             if payload.home_score > payload.away_score:
                 home_points = 1
@@ -1078,9 +1088,13 @@ def admin_update_participant(
         update_data["losses"] = max(0, payload.losses)
     if payload.draws is not None:
         update_data["draws"] = max(0, payload.draws)
+    # Allow clearing group_code by setting it to None or empty string
     if payload.group_code is not None:
         group_value = payload.group_code.strip().upper() if payload.group_code else None
         update_data["group_code"] = group_value
+    elif hasattr(payload, 'group_code'):
+        # If group_code field exists but is None, explicitly clear it
+        update_data["group_code"] = None
     if payload.goals_for is not None:
         update_data["goals_for"] = max(0, payload.goals_for)
     if payload.goals_against is not None:

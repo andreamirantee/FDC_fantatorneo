@@ -108,6 +108,22 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                 )
                 bonus_rows = bonus_res.data if bonus_res and getattr(bonus_res, "data", None) else []
 
+                # Recupera nomi delle squadre (participants) per i bonus
+                participant_ids = [row.get("participant_id") for row in bonus_rows if row.get("participant_id")]
+                participants_map = {}
+                if participant_ids:
+                    try:
+                        participants_res = (
+                            client.table("participants")
+                            .select("id, name")
+                            .in_("id", list(set(participant_ids)))
+                            .execute()
+                        )
+                        if participants_res and getattr(participants_res, "data", None):
+                            participants_map = {p.get("id"): p.get("name") for p in participants_res.data}
+                    except Exception:
+                        pass
+
                 normalized_bonus = []
                 bonus_total = 0
                 for row in bonus_rows:
@@ -118,6 +134,8 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                     except Exception:
                         pts = 0
                     bonus_total += pts
+                    participant_id = row.get("participant_id")
+                    participant_name = participants_map.get(participant_id) if participant_id else None
                     normalized_bonus.append(
                         {
                             "id": row.get("id"),
@@ -125,7 +143,8 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                             "points": pts,
                             "reason": row.get("reason") or "Motivo non specificato",
                             "sport": row.get("sport"),
-                            "participant_id": row.get("participant_id"),
+                            "participant_id": participant_id,
+                            "participant_name": participant_name,
                             "awarded_at": row.get("awarded_at"),
                             "is_active": bool(row.get("is_active", True)),
                         }

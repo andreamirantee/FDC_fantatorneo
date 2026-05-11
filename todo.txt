@@ -1,17 +1,12 @@
-introdurre logica per gli altri sport
+logica 3 2 1 padel.
+filtro per crea partita, per cui se metto calcio filtra solo le squadre di calcio.
 
-sistemare edit partita e classifica: la partita non modifica match fatti vittorie e sconfitte, la classifica non modifica le partite fatte.
-
-rimuovere dalla sezione view classifica la colonna girone, la colonna azione e la colonna sport. poi per ogni sezione dividere secondo la logica degli sport in gironi e fasi finali
 
 
 aggiungere casella per i bonus
 
 modifica sezione il mio team per vedere statistiche avanzate 
 
-
-
-ci devono essere i nomi dei giocatori di ogni squadra.
 
 rendere sito mobile ready
 
