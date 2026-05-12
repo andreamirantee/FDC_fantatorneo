@@ -37,3 +37,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\rebuild_venv.ps1 -PythonExe "
 Contratto API pronto all'uso per integrazione frontend:
 
 - docs/flutterflow_api_contract.md
+
+## Deploy su Render
+
+Il progetto include un blueprint Render in [render.yaml](render.yaml).
+
+Variabili da impostare su Render:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_JWT_SECRET`
+- `CORS_ORIGINS=https://fdcfanta.me,https://www.fdcfanta.me`
+- `SUPABASE_EMAIL_REDIRECT_TO=https://fdcfanta.me/auth`
+
+Comando di avvio usato da Render:
+
+```powershell
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
