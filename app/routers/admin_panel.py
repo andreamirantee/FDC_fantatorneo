@@ -113,7 +113,136 @@ def serve_admin_panel():
 			border-radius: 8px;
 			font-size: 12px;
 		}
+		.admin-table select {
+			width: 100%;
+			padding: 6px 8px;
+			border: 1px solid rgba(255,255,255,0.12);
+			background: rgba(17, 24, 39, 0.92);
+			color: var(--theme-text);
+			border-radius: 8px;
+			font-size: 12px;
+			height: 34px;
+		}
 		.admin-table input:focus { outline: none; border-color: var(--theme-sky); }
+		.admin-table td { vertical-align: middle; }
+		.admin-table th { white-space: nowrap; }
+		.participant-card-grid {
+			display: grid;
+			gap: 12px;
+		}
+		.participant-card {
+			background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
+			border: 1px solid rgba(255,255,255,0.18);
+			border-radius: 14px;
+			padding: 14px;
+			box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+		}
+		.participant-card-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 12px;
+		}
+		.participant-card-title {
+			font-size: 15px;
+			font-weight: 700;
+			color: #f8fafc;
+			line-height: 1.25;
+		}
+		.participant-card-meta {
+			font-size: 12px;
+			color: #cbd5e1;
+			text-align: right;
+			white-space: nowrap;
+		}
+		.participant-card-fields {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 10px;
+		}
+		.participant-field {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			padding: 8px;
+			border-radius: 10px;
+			background: rgba(15, 23, 42, 0.34);
+		}
+		.participant-field label {
+			font-size: 11px;
+			font-weight: 700;
+			color: #dbeafe;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.classifica-search-wrap {
+			display: flex;
+			align-items: center;
+			flex-wrap: wrap;
+			gap: 10px;
+			margin-bottom: 14px;
+		}
+		.classifica-search-wrap input {
+			flex: 1 1 240px;
+			padding: 10px 12px;
+			border-radius: 10px;
+			border: 1px solid rgba(255,255,255,0.14);
+			background: rgba(15, 23, 42, 0.88);
+			color: var(--theme-text);
+			font-size: 14px;
+			min-width: 200px;
+		}
+		.classifica-search-wrap input::placeholder { color: rgba(226, 232, 240, 0.55); }
+		.classifica-search-wrap .search-count {
+			font-size: 12px;
+			color: #cbd5e1;
+			white-space: nowrap;
+		}
+		.ranking-table-wrap {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			border: 1px solid rgba(255,255,255,0.10);
+			border-radius: 12px;
+			background: rgba(15, 23, 42, 0.35);
+			padding: 6px;
+		}
+		.ranking-table {
+			width: 100%;
+			min-width: 100%;
+			margin-top: 0;
+		}
+		.ranking-table--groups {
+			width: 100%;
+			min-width: 0;
+			table-layout: fixed;
+		}
+		.ranking-table--groups th,
+		.ranking-table--groups td,
+		.ranking-table--finals th,
+		.ranking-table--finals td {
+			padding: 8px 6px;
+			font-size: 12px;
+			white-space: nowrap;
+		}
+		.ranking-table--groups th:first-child,
+		.ranking-table--groups td:first-child {
+			width: 34px;
+			text-align: center;
+		}
+		.ranking-table--groups th:nth-child(2),
+		.ranking-table--groups td:nth-child(2) {
+			width: auto;
+			min-width: 0;
+			max-width: none;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.ranking-table--groups th:nth-child(n+3),
+		.ranking-table--groups td:nth-child(n+3) {
+			width: 46px;
+			text-align: center;
+		}
 		.btn-save {
 			background: linear-gradient(135deg, var(--theme-sky) 0%, #7ee8ff 100%);
 			color: var(--theme-ink);
@@ -229,18 +358,50 @@ def serve_admin_panel():
 			.form-group input, .form-group select { min-height: 44px; font-size: 16px; }
 			.btn { font-size: 14px; padding: 12px 16px; min-height: 44px; }
 			th, td { padding: 8px; font-size: 12px; }
+			.panel.full-width { padding: 14px; }
+			.flex-selector-container { gap: 8px; }
 			
 			/* Table scrollable */
 			.admin-table {
 				display: block;
 				overflow-x: auto;
 				-webkit-overflow-scrolling: touch;
+				max-width: 100%;
 			}
-			
-			.admin-table th,
-			.admin-table td {
-				padding: 10px 6px;
+			.ranking-table {
+				display: table;
+				width: 100%;
+				min-width: 0;
+				table-layout: fixed;
+			}
+			.ranking-table-wrap {
+				padding: 4px;
+				border-radius: 10px;
+			}
+			.ranking-table--groups,
+			.ranking-table--finals {
+				min-width: 0;
+			}
+			.ranking-table--groups th,
+			.ranking-table--groups td,
+			.ranking-table--finals th,
+			.ranking-table--finals td {
+				padding: 8px 6px;
+				font-size: 11px;
+			}
+			.ranking-table--groups th:nth-child(2),
+			.ranking-table--groups td:nth-child(2) {
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.admin-table td:nth-child(9) { min-width: 90px; }
+			.admin-table input,
+			.admin-table select {
+				height: 36px;
 				font-size: 12px;
+				padding: 4px 6px;
+				border-radius: 7px;
 			}
 			
 			.btn { font-size: 14px; padding: 12px 16px; }
@@ -272,13 +433,91 @@ def serve_admin_panel():
 			
 			.admin-table th,
 			.admin-table td {
-				padding: 8px 4px;
-				font-size: 11px;
+				padding: 7px 4px;
+				font-size: 10px;
 			}
 			
 			.admin-table input {
 				font-size: 11px !important;
 				padding: 4px 6px !important;
+				height: 34px;
+			}
+			.admin-table select {
+				font-size: 11px !important;
+				height: 34px;
+				padding: 4px 6px !important;
+			}
+			.ranking-table {
+				display: table;
+				width: 100%;
+				min-width: 0;
+				table-layout: fixed;
+			}
+			.ranking-table-wrap {
+				padding: 3px;
+			}
+			.ranking-table--groups {
+				min-width: 0;
+			}
+			.ranking-table--groups th,
+			.ranking-table--groups td,
+			.ranking-table--finals th,
+			.ranking-table--finals td {
+				padding: 7px 5px;
+				font-size: 10px;
+			}
+			.ranking-table--groups th:nth-child(2),
+			.ranking-table--groups td:nth-child(2) {
+				min-width: 0;
+				max-width: none;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.ranking-table--groups th:nth-child(n+3),
+			.ranking-table--groups td:nth-child(n+3) {
+				width: 42px;
+			}
+			.participant-card-grid {
+				gap: 10px;
+			}
+			.participant-card {
+				padding: 12px;
+				border-radius: 12px;
+				background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.08));
+			}
+			.participant-card-fields {
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+			}
+			.participant-card-title {
+				font-size: 14px;
+			}
+			.participant-card-meta {
+				font-size: 11px;
+			}
+			.participant-field {
+				padding: 7px;
+				gap: 5px;
+			}
+			.classifica-search-wrap {
+				margin-bottom: 12px;
+			}
+			.classifica-search-wrap input {
+				flex: 1 1 100%;
+				font-size: 16px;
+			}
+			.admin-table th:nth-child(2),
+			.admin-table td:nth-child(2) { min-width: 110px; }
+			.admin-table th:nth-child(6),
+			.admin-table td:nth-child(6),
+			.admin-table th:nth-child(7),
+			.admin-table td:nth-child(7) { min-width: 78px; }
+			.admin-table th:nth-child(9),
+			.admin-table td:nth-child(9) { min-width: 82px; }
+			
+			/* Hide the table edit view on iPhone and use cards instead */
+			#adminParticipantsContainer table.admin-table {
+				display: none !important;
 			}
 			
 			/* Make stacked blocks fit iPhone screens without sideways scrolling */
@@ -430,7 +669,7 @@ def serve_admin_panel():
 							</select>
 						</div>
 					</div>
-					<div style="overflow-x: auto;" id="rankingViewContainer">
+					<div id="rankingViewContainer" style="max-height: 620px; overflow: auto; border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 8px; background: rgba(17,24,39,0.36);">
 						<p style="text-align: center; color: #9ca3af;">Caricamento classifica...</p>
 					</div>
 				</div>
@@ -439,6 +678,10 @@ def serve_admin_panel():
 					<p style="color: #9ca3af; font-size: 13px; margin-bottom: 15px;">Aggiorna PF, V, S, GF/GS o SV/SP e punteggi.</p>
 					<div style="margin-bottom: 20px;">
 						<h3 style="margin-bottom: 10px;">🏆 Partecipanti (Squadre)</h3>
+						<div class="classifica-search-wrap">
+							<input type="text" id="modifyClassificaSearch" placeholder="Cerca squadra, ID, sport o girone..." oninput="updateModifyClassificaView()">
+							<div id="modifyClassificaSearchCount" class="search-count"></div>
+						</div>
 						<div class="flex-selector-container" style="margin-bottom: 15px;">
 							<label for="modifyClassificaSportSelect" style="font-weight: 600; color: #e5e7eb;">Sport:</label>
 							<select id="modifyClassificaSportSelect" onchange="updateModifyClassificaView()" style="padding: 8px 12px; background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;">
@@ -893,31 +1136,28 @@ def serve_admin_panel():
 		}
 
 		function renderSportGroupTable(title, teams, sportKey) {
-			const header = sportKey === 'calcio'
-				? '<tr><th>Pos</th><th>Squadra</th><th>PF</th><th>V</th><th>S</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th></tr>'
-				: '<tr><th>Pos</th><th>Squadra</th><th>PF</th><th>V</th><th>S</th><th>SV</th><th>SP</th><th>Pti</th></tr>';
+			const header = '<tr><th>Pos</th><th>Squadra</th><th>V</th><th>Pareggi</th><th>S</th><th>Pti</th></tr>';
 		const rows = teams.length
 			? teams.map((team, index) => `
 				<tr>
 					<td>${index + 1}</td>
 					<td>${team.name || 'Squadra ' + team.id}</td>
-					<td>${team.matches_played || 0}</td>
 					<td>${team.wins || 0}</td>
+					<td>${team.draws || 0}</td>
 					<td>${team.losses || 0}</td>
-					${sportKey === 'calcio'
-						? `<td>${team.goals_for || 0}</td><td>${team.goals_against || 0}</td><td>${(team.goals_for || 0) - (team.goals_against || 0)}</td>`
-						: `<td>${team.sets_won || 0}</td><td>${team.sets_lost || 0}</td>`}
 					<td>${team.points || 0}</td>
 				</tr>
 			`).join('')
-			: `<tr><td colspan="${sportKey === 'calcio' ? 9 : 8}" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>`;
+			: '<tr><td colspan="6" style="text-align:center; color:#9ca3af;">Nessuna squadra</td></tr>';
 		return `
 			<div class="panel" style="margin-bottom: 16px;">
 				<h3 style="margin: 10px 0;">${title}</h3>
-				<table class="admin-table">
-					<thead>${header}</thead>
-					<tbody>${rows}</tbody>
-				</table>
+				<div class="ranking-table-wrap">
+					<table class="admin-table ranking-table ranking-table--groups">
+						<thead>${header}</thead>
+						<tbody>${rows}</tbody>
+					</table>
+				</div>
 			</div>
 		`;
 		}
@@ -938,10 +1178,12 @@ def serve_admin_panel():
 			return `
 				<div class="panel">
 					<h3 style="margin: 10px 0;">Fasi finali</h3>
-					<table class="admin-table">
-						<thead><tr><th>Fase</th><th>Squadra</th><th>Squadra</th><th>Risultato</th></tr></thead>
-						<tbody>${rows}</tbody>
-					</table>
+					<div class="ranking-table-wrap">
+						<table class="admin-table ranking-table ranking-table--finals">
+							<thead><tr><th>Fase</th><th>Squadra</th><th>Squadra</th><th>Risultato</th></tr></thead>
+							<tbody>${rows}</tbody>
+						</table>
+					</div>
 				</div>
 			`;
 		}
@@ -959,6 +1201,9 @@ def serve_admin_panel():
 		}
 
 		function renderAdminParticipantsTable(participants, sport = null, subview = 'all') {
+			const isMobile = window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
+			const searchValue = (document.getElementById('modifyClassificaSearch')?.value || '').trim().toLowerCase();
+			
 			// Filter participants by sport if specified
 			let filtered = participants;
 			if (sport) {
@@ -978,19 +1223,72 @@ def serve_admin_panel():
 				});
 			}
 
+			if (searchValue) {
+				filtered = filtered.filter(p => {
+					const name = String(p.name || '').toLowerCase();
+					const id = String(p.id || '').toLowerCase();
+					const sportName = String(p.sport || p.role || '').toLowerCase();
+					const groupCode = String(p.group_code || '').toLowerCase();
+					return name.includes(searchValue) || id.includes(searchValue) || sportName.includes(searchValue) || groupCode.includes(searchValue);
+				});
+			}
+
+			const searchCountEl = document.getElementById('modifyClassificaSearchCount');
+			if (searchCountEl) {
+				searchCountEl.textContent = `${filtered.length} risultato${filtered.length === 1 ? '' : 'i'}`;
+			}
+
+			if (isMobile) {
+				let html = '<div class="participant-card-grid">';
+				filtered.forEach(p => {
+					const sportValue = p.sport || p.role || 'N/A';
+					const draws = p.draws || 0;
+					const groupCode = (p.group_code || '').toUpperCase();
+
+					html += `
+						<div class="participant-card" data-sport="${sportValue}" data-participant-id="${p.id}">
+							<div class="participant-card-header">
+								<div class="participant-card-title">${p.name || 'N/A'}</div>
+								<div class="participant-card-meta">ID ${p.id}</div>
+							</div>
+							<div class="participant-card-fields">
+								<div class="participant-field">
+									<label>V</label>
+									<input class="classifica-field" type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0">
+								</div>
+								<div class="participant-field">
+									<label>Pareggi</label>
+									<input class="classifica-field" type="number" value="${draws}" id="draws_${p.id}" min="0">
+								</div>
+								<div class="participant-field">
+									<label>S</label>
+									<input class="classifica-field" type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0">
+								</div>
+								<div class="participant-field">
+									<label>Punti</label>
+									<input class="classifica-field" type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0">
+								</div>
+							</div>
+						</div>
+					`;
+				});
+				html += '</div>';
+				if (filtered.length === 0 && sport) {
+					html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
+				}
+				document.getElementById('adminParticipantsContainer').innerHTML = html;
+				return;
+			}
+
 			let html = `
-				<table class="admin-table">
+				<table class="admin-table" style="table-layout: fixed; width: 100%;">
 					<thead>
 						<tr>
-							<th>ID</th>
-							<th>Nome</th>
-							<th>PF</th>
-							<th>V</th>
-							<th>S</th>
-							<th>GF/SV</th>
-							<th>GS/SP</th>
-							<th>Pti</th>
-							<th>Girone</th>
+							<th style="width: 32%;">Nome</th>
+							<th style="width: 14%;">Vittorie</th>
+							<th style="width: 14%;">Pareggi</th>
+							<th style="width: 14%;">Sconfitte</th>
+							<th style="width: 14%;">Punti</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -998,28 +1296,13 @@ def serve_admin_panel():
 
 			filtered.forEach(p => {
 				const sport = p.sport || p.role || 'N/A';
-				const isCal = sport.toLowerCase() === 'calcio';
-				const gf = isCal ? (p.goals_for || 0) : (p.sets_won || 0);
-				const gs = isCal ? (p.goals_against || 0) : (p.sets_lost || 0);
-				const groupCode = (p.group_code || '').toUpperCase();
-				let gironeLabel = 'Nessuno';
-				if (groupCode === 'A') gironeLabel = 'Girone A';
-				else if (groupCode === 'B') gironeLabel = 'Girone B';
 				html += `
 					<tr data-sport="${sport}" data-participant-id="${p.id}">
-						<td>${p.id}</td>
-						<td>${p.name || 'N/A'}</td>
-						<td><input type="number" value="${p.matches_played || 0}" id="pg_${p.id}" min="0"></td>
-						<td><input type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0"></td>
-						<td><input type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0"></td>
-						<td><input type="number" value="${gf}" id="gf_${p.id}" min="0"></td>
-						<td><input type="number" value="${gs}" id="gs_${p.id}" min="0"></td>
-						<td><input type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0"></td>
-						<td><select id="group_${p.id}" style="width: 100%; padding: 6px 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; border-radius: 6px;">
-							<option value="" ${!groupCode ? 'selected' : ''}>ND</option>
-							<option value="A" ${groupCode === 'A' ? 'selected' : ''}>A</option>
-							<option value="B" ${groupCode === 'B' ? 'selected' : ''}>B</option>
-						</select></td>
+							<td style="word-break: break-word;">${p.name || 'N/A'}</td>
+							<td><input class="classifica-field" type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0"></td>
+							<td><input class="classifica-field" type="number" value="${p.draws || 0}" id="draws_${p.id}" min="0"></td>
+							<td><input class="classifica-field" type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0"></td>
+							<td><input class="classifica-field" type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0"></td>
 					</tr>
 				`;
 			});
@@ -1124,32 +1407,18 @@ def serve_admin_panel():
 				return;
 			}
 
-			const rowSport = sport || document.querySelector(`#adminParticipantsContainer tr[data-participant-id="${participantId}"]`)?.dataset.sport || '';
-			const pg = parseInt(document.getElementById(`pg_${participantId}`).value) || 0;
+			const participantNode = document.querySelector(`#adminParticipantsContainer [data-participant-id="${participantId}"]`);
+			const rowSport = sport || participantNode?.dataset.sport || '';
 			const wins = parseInt(document.getElementById(`wins_${participantId}`).value) || 0;
+			const draws = parseInt(document.getElementById(`draws_${participantId}`).value) || 0;
 			const losses = parseInt(document.getElementById(`losses_${participantId}`).value) || 0;
-			const gf = parseInt(document.getElementById(`gf_${participantId}`).value) || 0;
-			const gs = parseInt(document.getElementById(`gs_${participantId}`).value) || 0;
 			const points = parseInt(document.getElementById(`points_${participantId}`).value) || 0;
-			const groupCodeValue = document.getElementById(`group_${participantId}`).value;
-			const groupCode = groupCodeValue === "" ? null : groupCodeValue;
-			const sportKey = rowSport.toLowerCase();
-			const isCal = sportKey === 'calcio';
 			const payload = {
 				score: points,
 				wins: wins,
+				draws: draws,
 				losses: losses,
-				group_code: groupCode,
-				matches_played: pg
 			};
-
-			if (isCal) {
-				payload.goals_for = gf;
-				payload.goals_against = gs;
-			} else {
-				payload.sets_won = gf;
-				payload.sets_lost = gs;
-			}
 
 			try {
 				const response = await fetch(`${API_BASE}/market/admin/participants/${participantId}`, {
@@ -1180,7 +1449,7 @@ def serve_admin_panel():
 				return;
 			}
 
-			const rows = Array.from(document.querySelectorAll('#adminParticipantsContainer tr[data-participant-id]'));
+			const rows = Array.from(document.querySelectorAll('#adminParticipantsContainer [data-participant-id]'));
 			for (const row of rows) {
 				const participantId = Number(row.dataset.participantId);
 				const sport = row.dataset.sport || '';

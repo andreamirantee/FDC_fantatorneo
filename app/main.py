@@ -10,6 +10,7 @@ Protezione Hardening:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -62,12 +63,12 @@ if origins:
 
 @app.get("/", tags=["Root"])
 def read_root():
-    """Endpoint di check health per root.
+    """Reindirizza il dominio base alla pagina auth.
     
     Returns:
-        Conferma che API è online.
+        Redirect verso /auth.
     """
-    return {"status": "ok", "message": "Welcome to FDC Fantatorneo API!"}
+    return RedirectResponse(url="/auth", status_code=307)
 
 # Route API versionate: tutti gli endpoint operativi sono sotto /api/v1.
 app.include_router(health_router, prefix="/api/v1")

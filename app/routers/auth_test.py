@@ -93,7 +93,7 @@ def auth_login():
 
                 <div id="warning-banner" class="warning-banner">
                     <h3>Email non confermata</h3>
-                    <p id="warning-text">Accedi alla tua email e conferma il link di verifica.</p>
+                    <p id="warning-text">Accedi alla tua email e conferma il link di verifica. Controlla anche Spam o Posta indesiderata.</p>
                     <button class="secondary" onclick="resendConfirmation()" style="margin-top: 8px;">Rinvia conferma email</button>
                 </div>
 
@@ -185,7 +185,7 @@ def auth_login():
                     });
                     const payload = await response.json();
                     if (response.ok) {
-                        showError("Email di conferma inviata. Controlla la tua casella.");
+                        showError("Email di conferma inviata. Controlla la tua casella e anche Spam o Posta indesiderata.");
                     } else {
                         showError(payload.detail || "Errore nell'invio.");
                     }
@@ -271,7 +271,7 @@ def auth_register():
                 
                 <div id="success-banner" class="success-banner">
                     <h3>Registrazione completata</h3>
-                    <p>Ti abbiamo inviato una email di conferma. Aprila e clicca il link per attivare l'account.</p>
+                    <p>Ti abbiamo inviato una email di conferma. Aprila e clicca il link per attivare l'account. Controlla anche Spam o Posta indesiderata.</p>
                 </div>
 
                 <div id="error-banner" class="error-banner">

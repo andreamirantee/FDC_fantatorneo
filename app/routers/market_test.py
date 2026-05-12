@@ -188,6 +188,9 @@ def serve_home():
             border-top: 1px solid rgba(255, 255, 255, 0.12);
             color: #dce6f7;
         }}
+        .ranking-table td:nth-child(2) {{
+            text-align: center;
+        }}
         .ranking-table tr:hover {{ background: rgba(51, 204, 255, 0.08); }}
         
         .volley-container {{
@@ -558,6 +561,14 @@ def serve_home():
             color: #eef3fb;
         }}
 
+        #filterName {{
+            text-align: center !important;
+        }}
+        
+        #filterName::placeholder {{
+            text-align: center;
+        }}
+
         @media (max-width: 1024px) {{
             body {{ padding: 12px; }}
             .container {{ border-radius: 16px; }}
@@ -675,15 +686,14 @@ def serve_home():
             </div>
 
             <div class="panel" id="market">
-                <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; justify-content:center;">
                     <select id="sportSelect" onchange="renderMarketBySport()" onfocus="prepareMarketSportSelect(this)" style="background: rgba(58,76,104,0.92); color:#eef3fb; border:1px solid rgba(255,255,255,0.24); border-radius:8px; min-height:40px; min-width:220px; padding:8px 12px; font-weight:700;">
                         <option value="all">Seleziona Sport</option>
                         <option value="Calcio">Calcio</option>
                         <option value="Pallavolo">Pallavolo</option>
                         <option value="Padel">Padel</option>
                     </select>
-                    <div style="flex:1"></div>
-                    <input type="text" id="filterName" placeholder="Cerca nome partecipante" oninput="renderMarketBySport()" style="padding:8px 10px; border:1px solid rgba(255,255,255,0.24); background: rgba(58,76,104,0.92); color:#eef3fb; border-radius:8px; min-height:40px; min-width:260px;" />
+                    <input type="text" id="filterName" placeholder="Cerca nome partecipante" oninput="renderMarketBySport()" style="padding:8px 10px; border:1px solid rgba(255,255,255,0.24); background: rgba(58,76,104,0.92); color:#eef3fb; border-radius:8px; min-height:40px; min-width:260px; text-align:center;" />
                 </div>
 
                 <div id="marketList">
