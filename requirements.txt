@@ -1,11 +1,26 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-supabase
-PyJWT
-httpx
-pytest
-# Per connessione diretta a Postgres (opzionale, ma consigliato)
-psycopg2-binary
-sqlmodel
-slowapi
+# Core FastAPI e ASGI server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Environment e configurazione
+python-dotenv>=1.0.0
+
+# Database e ORM
+supabase>=2.4.0
+sqlmodel>=0.0.14
+psycopg2-binary>=2.9.9  # Driver PostgreSQL per connessioni dirette
+
+# Autenticazione e JWT
+PyJWT>=2.8.0
+pydantic>=2.0.0
+pydantic-core>=2.0.0
+email-validator>=2.1.0  # Validator per pydantic EmailStr
+
+# HTTP client
+httpx>=0.26.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Testing
+pytest>=7.4.3
