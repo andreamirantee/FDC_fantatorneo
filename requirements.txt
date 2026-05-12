@@ -1,11 +1,13 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-supabase
-PyJWT
-httpx
-pytest
-# Per connessione diretta a Postgres (opzionale, ma consigliato)
-psycopg2-binary
-sqlmodel
-slowapi
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-dotenv>=1.0.0
+supabase>=2.4.0
+PyJWT>=2.8.0
+httpx>=0.26.0
+pytest>=7.4.3
+psycopg2-binary>=2.9.9
+sqlmodel>=0.0.14
+slowapi>=0.1.9
+pydantic[email]>=2.0.0
+pydantic-core>=2.0.0
+requests>=2.31.0
