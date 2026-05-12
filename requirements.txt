@@ -1,26 +1,13 @@
-# Core FastAPI e ASGI server
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-
-# Environment e configurazione
 python-dotenv>=1.0.0
-
-# Database e ORM
 supabase>=2.4.0
-sqlmodel>=0.0.14
-psycopg2-binary>=2.9.9  # Driver PostgreSQL per connessioni dirette
-
-# Autenticazione e JWT
 PyJWT>=2.8.0
+httpx>=0.26.0
+pytest>=7.4.3
+psycopg2-binary>=2.9.9
+sqlmodel>=0.0.14
+slowapi>=0.1.9
 pydantic>=2.0.0
 pydantic-core>=2.0.0
-email-validator>=2.1.0  # Validator per pydantic EmailStr
-
-# HTTP client
-httpx>=0.26.0
-
-# Rate limiting
-slowapi>=0.1.9
-
-# Testing
-pytest>=7.4.3
+email-validator>=2.1.0
