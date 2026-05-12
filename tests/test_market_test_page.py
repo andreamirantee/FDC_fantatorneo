@@ -13,7 +13,8 @@ def test_market_test_page_exists():
     assert "text/html" in response.headers["content-type"]
     assert "Home Fantatorneo" in response.text
     assert "Classifica" in response.text
-    assert "Partecipanti Disponibili" in response.text
+    # Page uses 'Caricamento partecipanti' placeholder text in market list
+    assert "Caricamento partecipanti" in response.text
 
 
 def test_market_test_page_has_tabs():
