@@ -7,7 +7,9 @@ database per degradazione corretta.
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 
 from ..database import get_supabase_client
-from ..schemas import TeamCreate, TeamRead, UpdateTeamScore
+from ..auth import get_current_user
+from ..policies import verify_team_ownership
+from ..schemas import TeamCreate, TeamRead, UpdateTeamName, UpdateTeamScore
 
 # Router team: gestisce listing e creazione team.
 router = APIRouter(prefix="/teams", tags=["Teams"])
@@ -118,5 +120,34 @@ def update_team_score(
     
     if not response.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update team")
+
+    return response.data[0]
+
+
+@router.patch("/{team_id}/name", status_code=status.HTTP_200_OK)
+def update_team_name(
+    team_id: int,
+    payload: UpdateTeamName,
+    current_user=Depends(get_current_user),
+    client=Depends(get_supabase_client),
+):
+    """Aggiorna il nome del team per l'utente proprietario."""
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    # Verifica che l'utente sia proprietario del team.
+    verify_team_ownership(current_user, team_id, client)
+
+    new_name = (payload.name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Team name is required")
+
+    try:
+        response = client.table("teams").update({"name": new_name}).eq("id", team_id).execute()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update team")
+
+    if not response.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
 
     return response.data[0]

@@ -32,7 +32,7 @@ def list_participants(client=Depends(get_supabase_client)):
         return []
 
     try:
-        response = client.table("participants").select("id, external_id, name, role, cost, score, team_id, owner_user_ids").order("id").execute()
+        response = client.table("participants").select("id, name, role, cost, score, owner_user_ids, composed_of").order("id").execute()
         participants = response.data or []
         for participant in participants:
             participant["owner_user_ids"] = participant.get("owner_user_ids") or []
@@ -40,7 +40,7 @@ def list_participants(client=Depends(get_supabase_client)):
         return participants
     except Exception:
         try:
-            response = client.table("participants").select("id, external_id, name, role, cost, team_id, owner_user_ids").order("id").execute()
+            response = client.table("participants").select("id, name, role, cost, owner_user_ids, composed_of").order("id").execute()
             participants = response.data or []
             for participant in participants:
                 participant["score"] = 0
@@ -82,7 +82,7 @@ def create_participant(
         "name": payload.name,
         "role": payload.role,
         "cost": payload.cost or 0,
-        "team_id": payload.team_id,
+        "composed_of": payload.composed_of,
     }
     response = client.table("participants").insert(participant_payload).execute()
     if not response.data:

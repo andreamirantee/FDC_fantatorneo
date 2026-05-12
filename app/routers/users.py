@@ -71,4 +71,95 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
         except Exception:
             pass
 
+    # Se abbiamo un client e un team_id noto, arricchisci con il balance del team
+    try:
+        team_id = result.get("team_id") if isinstance(result, dict) else None
+        if client is not None and team_id:
+            try:
+                team_row = (
+                    client.table("teams")
+                    .select("id, balance_credits")
+                    .eq("id", int(team_id))
+                    .limit(1)
+                    .execute()
+                )
+                if team_row and getattr(team_row, 'data', None):
+                    tb = team_row.data[0].get("balance_credits")
+                    # normalizza a numero
+                    try:
+                        tb_val = int(tb) if tb is not None else 0
+                    except Exception:
+                        tb_val = 0
+                    result["team_balance"] = tb_val
+                    # compatibilità frontend: alias dome_balance
+                    result["dome_balance"] = tb_val
+            except Exception:
+                # non bloccare la risposta se il DB fallisce qui
+                pass
+
+            # Bonus team: restituisce elenco bonus e totale punti bonus.
+            try:
+                bonus_res = (
+                    client.table("bonus")
+                    .select("id, name, points, reason, sport, participant_id, awarded_at, is_active")
+                    .eq("team_id", int(team_id))
+                    .order("awarded_at", desc=True)
+                    .execute()
+                )
+                bonus_rows = bonus_res.data if bonus_res and getattr(bonus_res, "data", None) else []
+
+                # Recupera nomi delle squadre (participants) per i bonus
+                participant_ids = [row.get("participant_id") for row in bonus_rows if row.get("participant_id")]
+                participants_map = {}
+                if participant_ids:
+                    try:
+                        participants_res = (
+                            client.table("participants")
+                            .select("id, name")
+                            .in_("id", list(set(participant_ids)))
+                            .execute()
+                        )
+                        if participants_res and getattr(participants_res, "data", None):
+                            participants_map = {p.get("id"): p.get("name") for p in participants_res.data}
+                    except Exception:
+                        pass
+
+                normalized_bonus = []
+                bonus_total = 0
+                for row in bonus_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    is_active = row.get("is_active")
+                    if is_active is False:
+                        continue
+                    try:
+                        pts = int(row.get("points") or 0)
+                    except Exception:
+                        pts = 0
+                    bonus_total += pts
+                    participant_id = row.get("participant_id")
+                    participant_name = participants_map.get(participant_id) if participant_id else None
+                    normalized_bonus.append(
+                        {
+                            "id": row.get("id"),
+                            "name": row.get("name") or "Bonus",
+                            "points": pts,
+                            "reason": row.get("reason") or "Motivo non specificato",
+                            "sport": row.get("sport"),
+                            "participant_id": participant_id,
+                            "participant_name": participant_name,
+                            "awarded_at": row.get("awarded_at"),
+                            "is_active": bool(is_active) if is_active is not None else True,
+                        }
+                    )
+
+                result["bonus_items"] = normalized_bonus
+                result["bonus_total"] = bonus_total
+            except Exception:
+                # se la tabella bonus non esiste ancora o fallisce, non bloccare /users/me
+                result["bonus_items"] = []
+                result["bonus_total"] = 0
+    except Exception:
+        pass
+
     return result

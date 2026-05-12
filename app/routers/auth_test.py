@@ -17,17 +17,11 @@ router = APIRouter(tags=["Auth Test"])
 
 
 @router.get("/auth", response_class=HTMLResponse)
-def auth_playground():
-    """Fornisci pagina HTML testing auth interattiva.
-    
-    Fornisce form per:
-    - Registrazione (name, email, password) → email conferma inviata
-    - Login (email, password) → ritorna token JWT access (salvato in localStorage)
-    - Lettura profilo (/users/me) con bearer token
-    - Reinvio conferma (per retry verificazione email)
+def auth_login():
+    """Pagina login.
     
     Returns:
-        Pagina HTML con form stilizzati e handler JavaScript.
+        Pagina HTML con form login mobile-optimized.
     """
     return """
     <!doctype html>
@@ -35,233 +29,676 @@ def auth_playground():
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FDC Fantatorneo - Auth Test</title>
+        <title>FDCFANTA ✦ FDC Fantatorneo - Login</title>
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-            .wrap { max-width: 920px; margin: 0 auto; padding: 24px; }
-            .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 20px; margin-bottom: 18px; }
-            input, button, textarea { width: 100%; box-sizing: border-box; margin: 6px 0 12px; padding: 12px; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; }
-            button { background: #2563eb; border: none; cursor: pointer; font-weight: 700; }
-            button.secondary { background: #475569; }
-            pre { white-space: pre-wrap; word-break: break-word; background: #020617; padding: 14px; border-radius: 12px; min-height: 120px; }
-            h1, h2 { margin-top: 0; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-            @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-            .row { display: flex; gap: 10px; flex-wrap: wrap; }
-            .row button { flex: 1 1 200px; }
-            .auth-link {
-                margin-top: 10px;
-                font-size: 14px;
-                color: #cbd5e1;
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
             }
-            .auth-link a {
-                color: #60a5fa;
-                text-decoration: none;
-                font-weight: 700;
-                cursor: pointer;
-            }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
             .auth-link a:hover { text-decoration: underline; }
-            .register-panel { display: none; }
-            .success-banner {
-                display: none;
-                background: linear-gradient(135deg, #0f766e, #0b5c49);
-                border: 1px solid #34d399;
-                border-radius: 16px;
-                padding: 18px;
-                margin-bottom: 18px;
-                color: #ecfeff;
-            }
-            .success-banner h2 { margin-bottom: 8px; }
             .warning-banner {
                 display: none;
-                background: linear-gradient(135deg, #7c2d12, #9a3412);
-                border: 1px solid #fb923c;
-                border-radius: 16px;
-                padding: 18px;
-                margin-bottom: 18px;
-                color: #fff7ed;
+                background: linear-gradient(135deg, rgba(255, 128, 168, 0.18), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(255, 210, 77, 0.45);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
             }
-            .warning-banner h2 { margin-bottom: 8px; }
+            .warning-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .warning-banner p { margin: 4px 0; font-size: 13px; }
+            .error-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
         </style>
     </head>
     <body>
         <div class="wrap">
-            <h1>FDC Fantatorneo - Auth Test</h1>
-            <p>Usa questa pagina per provare registrazione, login e lettura del profilo Supabase.</p>
-
-            <div id="register-success" class="success-banner">
-                <h2>Registrazione completata</h2>
-                <p>Abbiamo inviato una mail di conferma all'indirizzo inserito. Aprila e conferma l'account per continuare.</p>
-                <p id="register-success-email" style="margin-bottom: 0; font-weight: 700;"></p>
-            </div>
-
-            <div id="email-not-confirmed" class="warning-banner">
-                <h2>Email non confermata</h2>
-                <p>Prima di fare login devi confermare l'email. Se non trovi il messaggio, usa il pulsante "Reinvia mail di conferma".</p>
-                <p id="email-not-confirmed-address" style="margin-bottom: 0; font-weight: 700;"></p>
-                <button class="secondary" onclick="resendFromWarning()">Reinvia adesso</button>
-            </div>
-
-            <div class="grid">
-                <div class="card">
-                    <h2>Login</h2>
-                    <input id="login-email" placeholder="Email" type="email" />
-                    <input id="login-password" placeholder="Password" type="password" />
-                    <button onclick="loginUser()">Entra</button>
-                    <button class="secondary" onclick="resendConfirmation()">Reinvia mail di conferma</button>
-                    <button class="secondary" onclick="loadMe()">Leggi /users/me</button>
-                    <button class="secondary" onclick="goToAdmin()">Accedi ad admin</button>
-                    <p class="auth-link">Non hai un account? <a onclick="toggleRegisterSection()">Registrati</a></p>
-                </div>
-            </div>
-
-            <div id="register-section" class="card register-panel">
-                <h2>Registrazione</h2>
-                <input id="reg-name" placeholder="Nome" />
-                <input id="reg-surname" placeholder="Cognome" />
-                <input id="reg-email" placeholder="Email" type="email" />
-                <input id="reg-password" placeholder="Password" type="password" />
-                <button onclick="registerUser()">Crea account</button>
-            </div>
-
             <div class="card">
-                <h2>Risposta</h2>
-                <p style="margin-top:-6px; color:#94a3b8;">Nota: per registrarti usa una email vera, altrimenti Supabase puo rifiutarla.</p>
-                <p style="margin-top:-8px; color:#94a3b8;">Se riprovi molte volte, Supabase puo anche applicare un rate limit temporaneo.</p>
-                <pre id="output">Pronto.</pre>
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Accedi</h2>
+                
+                <div id="error-banner" class="error-banner">
+                    <h3>Errore</h3>
+                    <p id="error-text">Password errata o account non trovato.</p>
+                </div>
+
+                <div id="warning-banner" class="warning-banner">
+                    <h3>Email non confermata</h3>
+                    <p id="warning-text">Accedi alla tua email e conferma il link di verifica.</p>
+                    <button class="secondary" onclick="resendConfirmation()" style="margin-top: 8px;">Rinvia conferma email</button>
+                </div>
+
+                <input id="login-email" type="email" placeholder="Email" />
+                <input id="login-password" type="password" placeholder="Password" />
+                <button class="primary" onclick="loginUser()">Accedi</button>
+                
+                <p class="auth-link"><a onclick="goToForgot()">Hai dimenticato la password?</a></p>
+                <p class="auth-link">Non hai un account? <a href="/register">Registrati</a></p>
             </div>
         </div>
 
         <script>
-            function setOutput(value) {
-                document.getElementById("output").textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+            function hideError() {
+                document.getElementById("error-banner").style.display = "none";
+            }
+            
+            function hideWarning() {
+                document.getElementById("warning-banner").style.display = "none";
             }
 
-            function showRegisterSuccess(email) {
-                document.getElementById("register-success-email").textContent = `Email inviata a: ${email}`;
-                document.getElementById("register-success").style.display = "block";
+            function showError(message) {
+                document.getElementById("error-text").textContent = message;
+                document.getElementById("error-banner").style.display = "block";
             }
 
-            function hideRegisterSuccess() {
-                document.getElementById("register-success").style.display = "none";
-                document.getElementById("register-success-email").textContent = "";
+            function showWarning() {
+                document.getElementById("warning-banner").style.display = "block";
             }
 
-            function showEmailNotConfirmed(email) {
-                document.getElementById("login-email").value = email;
-                document.getElementById("email-not-confirmed-address").textContent = `Account: ${email}`;
-                document.getElementById("email-not-confirmed").style.display = "block";
-            }
-
-            function hideEmailNotConfirmed() {
-                document.getElementById("email-not-confirmed").style.display = "none";
-                document.getElementById("email-not-confirmed-address").textContent = "";
-            }
-
-            function toggleRegisterSection() {
-                const section = document.getElementById("register-section");
-                const isVisible = section.style.display === "block";
-                section.style.display = isVisible ? "none" : "block";
-                if (!isVisible) {
-                    section.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-            }
-
-            function goToAdmin() {
-                window.location.href = "/admin";
-            }
-
-            async function registerUser() {
-                try {
-                    hideRegisterSuccess();
-                    hideEmailNotConfirmed();
-                    const email = document.getElementById("reg-email").value;
-                    const response = await fetch("/api/v1/auth/register", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            name: document.getElementById("reg-name").value,
-                            surname: document.getElementById("reg-surname").value,
-                            email: email,
-                            password: document.getElementById("reg-password").value,
-                        }),
-                    });
-                    const payload = await response.json();
-                    setOutput(payload);
-                    if (response.ok) {
-                        showRegisterSuccess(email);
-                    }
-                } catch (error) {
-                    setOutput({ error: String(error) });
-                }
+            function goToForgot() {
+                window.location.href = '/forgot';
             }
 
             async function loginUser() {
                 try {
-                    hideEmailNotConfirmed();
+                    hideError();
+                    hideWarning();
                     const email = document.getElementById("login-email").value;
+                    const password = document.getElementById("login-password").value;
+                    
+                    if (!email || !password) {
+                        showError("Inserisci email e password.");
+                        return;
+                    }
+
                     const response = await fetch("/api/v1/auth/login", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            email: email,
-                            password: document.getElementById("login-password").value,
-                        }),
+                        body: JSON.stringify({ email, password }),
                     });
                     const payload = await response.json();
+                    
                     if (payload.access_token) {
                         localStorage.setItem("fdc_access_token", payload.access_token);
-                        // Redirect alla dashboard dopo login riuscito
                         setTimeout(() => {
-                            window.location.href = '/market-test';
-                        }, 800);
-                    }
-                    const detail = String(payload.detail || "").toLowerCase();
-                    if (!response.ok && detail.includes("email not confirmed")) {
-                        showEmailNotConfirmed(email);
-                    }
-                    if (!response.ok && (detail.includes("invalid login credentials") || detail.includes("wrong password") || detail.includes("invalid credentials"))) {
-                        setOutput({
-                            error: "Le credenziali Auth non coincidono. Se hai eliminato solo l'utente locale, l'account Supabase esiste ancora con la password vecchia. Fai reset password o usa la password precedente.",
-                            detail: payload.detail,
-                        });
+                            window.location.href = '/home';
+                        }, 600);
                         return;
                     }
-                    setOutput(payload);
+                    
+                    const detail = String(payload.detail || "").toLowerCase();
+                    if (detail.includes("email not confirmed")) {
+                        showWarning();
+                        return;
+                    }
+                    if (detail.includes("invalid login credentials") || detail.includes("wrong password") || detail.includes("invalid credentials")) {
+                        showError("Password errata o account non trovato.");
+                        return;
+                    }
+                    
+                    showError(payload.detail || "Errore durante l'accesso.");
                 } catch (error) {
-                    setOutput({ error: String(error) });
+                    showError("Errore di connessione: " + String(error));
                 }
             }
 
             async function resendConfirmation() {
                 try {
                     const email = document.getElementById("login-email").value;
+                    if (!email) {
+                        showError("Inserisci la tua email.");
+                        return;
+                    }
                     const response = await fetch("/api/v1/auth/resend-confirmation", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ email }),
                     });
-                    setOutput(await response.json());
+                    const payload = await response.json();
+                    if (response.ok) {
+                        showError("Email di conferma inviata. Controlla la tua casella.");
+                    } else {
+                        showError(payload.detail || "Errore nell'invio.");
+                    }
                 } catch (error) {
-                    setOutput({ error: String(error) });
+                    showError("Errore: " + String(error));
                 }
             }
+        </script>
+    </body>
+    </html>
+    """
 
-            async function resendFromWarning() {
-                await resendConfirmation();
+
+@router.get("/register", response_class=HTMLResponse)
+def auth_register():
+    """Pagina registrazione.
+    
+    Returns:
+        Pagina HTML con form registrazione mobile-optimized.
+    """
+    return """
+    <!doctype html>
+    <html lang="it">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FDCFANTA ✦ FDC Fantatorneo - Registrazione</title>
+        <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
+            .auth-link a:hover { text-decoration: underline; }
+            .success-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
+            .error-banner {
+                display: none;
+                background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+                border: 1px solid rgba(255, 107, 122, 0.45);
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 16px;
+                color: #fee2e2;
+            }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Registrati</h2>
+                
+                <div id="success-banner" class="success-banner">
+                    <h3>Registrazione completata</h3>
+                    <p>Ti abbiamo inviato una email di conferma. Aprila e clicca il link per attivare l'account.</p>
+                </div>
+
+                <div id="error-banner" class="error-banner">
+                    <h3>Errore</h3>
+                    <p id="error-text">Controlla i dati e riprova.</p>
+                </div>
+
+                <input id="reg-name" type="text" placeholder="Nome" />
+                <input id="reg-surname" type="text" placeholder="Cognome" />
+                <input id="reg-email" type="email" placeholder="Email" />
+                <input id="reg-password" type="password" placeholder="Password" />
+                <button class="primary" onclick="registerUser()">Crea account</button>
+                
+                <p class="auth-link">Hai già un account? <a href="/auth">Accedi</a></p>
+            </div>
+        </div>
+
+        <script>
+            function hideError() {
+                document.getElementById("error-banner").style.display = "none";
             }
 
-            async function loadMe() {
+            function hideSuccess() {
+                document.getElementById("success-banner").style.display = "none";
+            }
+
+            function showError(message) {
+                document.getElementById("error-text").textContent = message;
+                document.getElementById("error-banner").style.display = "block";
+            }
+
+            function showSuccess() {
+                document.getElementById("success-banner").style.display = "block";
+            }
+
+            async function registerUser() {
                 try {
-                    const token = localStorage.getItem("fdc_access_token");
-                    const response = await fetch("/api/v1/users/me", {
-                        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+                    hideError();
+                    hideSuccess();
+                    const name = document.getElementById("reg-name").value;
+                    const surname = document.getElementById("reg-surname").value;
+                    const email = document.getElementById("reg-email").value;
+                    const password = document.getElementById("reg-password").value;
+                    
+                    if (!name || !surname || !email || !password) {
+                        showError("Compila tutti i campi.");
+                        return;
+                    }
+
+                    const response = await fetch("/api/v1/auth/register", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name, surname, email, password }),
                     });
-                    setOutput(await response.json());
+                    const payload = await response.json();
+                    
+                    if (response.ok) {
+                        showSuccess();
+                        setTimeout(() => {
+                            window.location.href = '/auth';
+                        }, 3000);
+                        return;
+                    }
+                    
+                    showError(payload.detail || "Errore durante la registrazione.");
                 } catch (error) {
-                    setOutput({ error: String(error) });
+                    showError("Errore di connessione: " + String(error));
                 }
             }
+        </script>
+    </body>
+    </html>
+    """
+
+
+@router.get("/forgot", response_class=HTMLResponse)
+def auth_forgot():
+    """Pagina reset password.
+    
+    Returns:
+        Pagina HTML con form per richiedere reset password.
+    """
+    return """
+    <!doctype html>
+    <html lang="it">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FDCFANTA ✦ FDC Fantatorneo - Reset Password</title>
+        <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 380px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 18px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.28); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 14px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .subtitle { margin: 0 0 18px 0; font-size: 15px; color: var(--theme-muted); line-height: 1.6; }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
+            .auth-link a:hover { text-decoration: underline; }
+            .success-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
+            .error-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Recupera Password</h2>
+                <p class="subtitle">Inserisci la tua email per ricevere un link di reset della password.</p>
+                
+                <div id="success-banner" class="success-banner">
+                    <h3>Email inviata</h3>
+                    <p>Controlla la tua casella di posta e segui il link per resettare la password.</p>
+                </div>
+
+                <div id="error-banner" class="error-banner">
+                    <h3>Errore</h3>
+                    <p id="error-text">Controlla l'email e riprova.</p>
+                </div>
+
+                <input id="forgot-email" type="email" placeholder="Email" />
+                <button class="primary" onclick="requestReset()">Invia Reset Link</button>
+                
+                <p class="auth-link">Ricordi la password? <a href="/auth">Accedi</a></p>
+                <p class="auth-link">Non hai un account? <a href="/register">Registrati</a></p>
+            </div>
+        </div>
+
+        <script>
+            function hideError() {
+                document.getElementById("error-banner").style.display = "none";
+            }
+
+            function hideSuccess() {
+                document.getElementById("success-banner").style.display = "none";
+            }
+
+            function showError(message) {
+                document.getElementById("error-text").textContent = message;
+                document.getElementById("error-banner").style.display = "block";
+            }
+
+            function showSuccess() {
+                document.getElementById("success-banner").style.display = "block";
+            }
+
+            async function requestReset() {
+                try {
+                    hideError();
+                    hideSuccess();
+                    const email = document.getElementById("forgot-email").value;
+                    
+                    if (!email) {
+                        showError("Inserisci la tua email.");
+                        return;
+                    }
+
+                    // Nota: Assicurati che il backend abbia un endpoint POST /api/v1/auth/request-password-reset
+                    const response = await fetch("/api/v1/auth/request-password-reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email }),
+                    });
+                    const payload = await response.json();
+                    
+                    if (response.ok) {
+                        showSuccess();
+                        setTimeout(() => {
+                            window.location.href = '/auth';
+                        }, 4000);
+                        return;
+                    }
+                    
+                    showError(payload.detail || "Errore nell'invio del reset link.");
+                } catch (error) {
+                    showError("Errore di connessione: " + String(error));
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+
+@router.get("/reset-password", response_class=HTMLResponse)
+def auth_reset_password():
+    """Pagina completamento reset password con token dalla URL.
+    
+    Returns:
+        Pagina HTML con form per inserire nuova password.
+    """
+    return """
+    <!doctype html>
+    <html lang="it">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FDCFANTA ✦ FDC Fantatorneo - Reset Password</title>
+        <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .subtitle { margin: 0 0 18px 0; font-size: 15px; color: var(--theme-muted); line-height: 1.6; }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
+            .auth-link a:hover { text-decoration: underline; }
+            .success-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
+            .error-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
+            .info-banner {
+                display: none;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 128, 168, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 16px;
+                color: var(--theme-text);
+            }
+            .info-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
+            .info-banner p { margin: 4px 0; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="card">
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Imposta Nuova Password</h2>
+                <p class="subtitle">Inserisci la tua nuova password per completare il reset.</p>
+                
+                <div id="info-banner" class="info-banner">
+                    <h3>Caricamento...</h3>
+                    <p id="info-text">Verificazione token in corso...</p>
+                </div>
+
+                <div id="success-banner" class="success-banner">
+                    <h3>Password resettata</h3>
+                    <p>Accedi con la tua nuova password.</p>
+                </div>
+
+                <div id="error-banner" class="error-banner">
+                    <h3>Errore</h3>
+                    <p id="error-text">Il link di reset è scaduto o non valido.</p>
+                </div>
+
+                <input id="new-password" type="password" placeholder="Nuova password" />
+                <input id="confirm-password" type="password" placeholder="Conferma password" />
+                <button class="primary" onclick="completeReset()">Salva Password</button>
+                
+                <p class="auth-link"><a href="/auth">Torna al login</a></p>
+            </div>
+        </div>
+
+        <script>
+            let resetToken = null;
+
+            function hideInfo() {
+                document.getElementById("info-banner").style.display = "none";
+            }
+
+            function hideError() {
+                document.getElementById("error-banner").style.display = "none";
+            }
+
+            function hideSuccess() {
+                document.getElementById("success-banner").style.display = "none";
+            }
+
+            function showError(message) {
+                document.getElementById("error-text").textContent = message;
+                document.getElementById("error-banner").style.display = "block";
+                hideInfo();
+            }
+
+            function showSuccess() {
+                document.getElementById("success-banner").style.display = "block";
+                hideInfo();
+            }
+
+            function showInfo(message) {
+                document.getElementById("info-text").textContent = message;
+                document.getElementById("info-banner").style.display = "block";
+            }
+
+            // Estrai token dalla URL (#access_token=...)
+            function extractToken() {
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
+                return params.get("access_token");
+            }
+
+            function initPage() {
+                resetToken = extractToken();
+                hideInfo();
+                
+                if (!resetToken) {
+                    showError("Link di reset non valido. Richiedi un nuovo reset.");
+                    return;
+                }
+                showInfo("Token verificato. Inserisci la nuova password.");
+            }
+
+            async function completeReset() {
+                try {
+                    hideError();
+                    hideSuccess();
+                    
+                    if (!resetToken) {
+                        showError("Link di reset non valido. Richiedi un nuovo reset.");
+                        return;
+                    }
+                    
+                    const newPassword = document.getElementById("new-password").value;
+                    const confirmPassword = document.getElementById("confirm-password").value;
+                    
+                    if (!newPassword || !confirmPassword) {
+                        showError("Inserisci e conferma la nuova password.");
+                        return;
+                    }
+                    
+                    if (newPassword !== confirmPassword) {
+                        showError("Le password non coincidono.");
+                        return;
+                    }
+                    
+                    if (newPassword.length < 6) {
+                        showError("La password deve avere almeno 6 caratteri.");
+                        return;
+                    }
+
+                    const response = await fetch("/api/v1/auth/reset-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token: resetToken, password: newPassword }),
+                    });
+                    const payload = await response.json();
+                    
+                    if (response.ok) {
+                        showSuccess();
+                        setTimeout(() => {
+                            window.location.href = '/auth';
+                        }, 3000);
+                        return;
+                    }
+                    
+                    showError(payload.detail || "Errore nel reset della password.");
+                } catch (error) {
+                    showError("Errore di connessione: " + String(error));
+                }
+            }
+
+            // Inizializza pagina
+            initPage();
         </script>
     </body>
     </html>
