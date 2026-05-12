@@ -34,6 +34,7 @@ from .routers.teams import router as teams_router
 from .routers.market import router as market_router
 from .routers.market_test import router as market_test_router
 from .routers.admin_panel import router as admin_panel_router
+from .routers.debug_auth import router as debug_auth_router
 
 # Istanza principale dell'applicazione FastAPI: tutti i router vengono inclusi qui.
 app = FastAPI(
@@ -79,6 +80,7 @@ app.include_router(market_router, prefix="/api/v1")
 app.include_router(auth_test_router)  # Route playground (senza prefix).
 app.include_router(market_test_router)  # Route playground mercato (senza prefix).
 app.include_router(admin_panel_router)  # Route admin panel (senza prefix).
+app.include_router(debug_auth_router)
 
 # Log info all'avvio.
 print("Server started. Allowed origins:", origins)
