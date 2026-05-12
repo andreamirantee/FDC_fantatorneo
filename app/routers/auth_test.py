@@ -29,51 +29,62 @@ def auth_login():
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FDC Fantatorneo - Login</title>
+        <title>FDCFANTA ✦ FDC Fantatorneo - Login</title>
         <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-            .wrap { width: 100%; max-width: 360px; }
-            .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 24px; }
-            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; font-size: 14px; }
-            input::placeholder { color: #64748b; }
-            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-            button.primary { background: #2563eb; color: #fff; }
-            button.primary:hover { background: #1d4ed8; }
-            button.secondary { background: #334155; color: #e2e8f0; }
-            button.secondary:hover { background: #475569; }
-            h2 { margin: 0 0 20px 0; font-size: 20px; }
-            .auth-link { margin-top: 16px; font-size: 13px; color: #cbd5e1; text-align: center; line-height: 1.5; }
-            .auth-link a { color: #60a5fa; text-decoration: none; font-weight: 700; cursor: pointer; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
             .auth-link a:hover { text-decoration: underline; }
             .warning-banner {
                 display: none;
-                background: linear-gradient(135deg, #7c2d12, #9a3412);
-                border: 1px solid #fb923c;
+                background: linear-gradient(135deg, rgba(255, 128, 168, 0.18), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(255, 210, 77, 0.45);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #fff7ed;
+                color: var(--theme-text);
             }
-            .warning-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .warning-banner p { margin: 4px 0; font-size: 12px; }
+            .warning-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .warning-banner p { margin: 4px 0; font-size: 13px; }
             .error-banner {
                 display: none;
-                background: linear-gradient(135deg, #7f1d1d, #b91c1c);
-                border: 1px solid #f87171;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #fee2e2;
+                color: var(--theme-text);
             }
-            .error-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .error-banner p { margin: 4px 0; font-size: 12px; }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
         </style>
     </head>
     <body>
         <div class="wrap">
             <div class="card">
-                <h2>Accedi</h2>
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Accedi</h2>
                 
                 <div id="error-banner" class="error-banner">
                     <h3>Errore</h3>
@@ -139,7 +150,7 @@ def auth_login():
                     if (payload.access_token) {
                         localStorage.setItem("fdc_access_token", payload.access_token);
                         setTimeout(() => {
-                            window.location.href = '/market-test';
+                            window.location.href = '/home';
                         }, 600);
                         return;
                     }
@@ -201,51 +212,62 @@ def auth_register():
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FDC Fantatorneo - Registrazione</title>
+        <title>FDCFANTA ✦ FDC Fantatorneo - Registrazione</title>
         <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-            .wrap { width: 100%; max-width: 360px; }
-            .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 24px; }
-            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; font-size: 14px; }
-            input::placeholder { color: #64748b; }
-            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-            button.primary { background: #2563eb; color: #fff; }
-            button.primary:hover { background: #1d4ed8; }
-            button.secondary { background: #334155; color: #e2e8f0; }
-            button.secondary:hover { background: #475569; }
-            h2 { margin: 0 0 20px 0; font-size: 20px; }
-            .auth-link { margin-top: 16px; font-size: 13px; color: #cbd5e1; text-align: center; line-height: 1.5; }
-            .auth-link a { color: #60a5fa; text-decoration: none; font-weight: 700; cursor: pointer; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
             .auth-link a:hover { text-decoration: underline; }
             .success-banner {
                 display: none;
-                background: linear-gradient(135deg, #0f766e, #0b5c49);
-                border: 1px solid #34d399;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #ecfeff;
+                color: var(--theme-text);
             }
-            .success-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .success-banner p { margin: 4px 0; font-size: 12px; }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
             .error-banner {
                 display: none;
                 background: linear-gradient(135deg, #7f1d1d, #b91c1c);
-                border: 1px solid #f87171;
+                border: 1px solid rgba(255, 107, 122, 0.45);
                 border-radius: 12px;
                 padding: 12px;
                 margin-bottom: 16px;
                 color: #fee2e2;
             }
-            .error-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .error-banner p { margin: 4px 0; font-size: 12px; }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
         </style>
     </head>
     <body>
         <div class="wrap">
             <div class="card">
-                <h2>Registrati</h2>
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Registrati</h2>
                 
                 <div id="success-banner" class="success-banner">
                     <h3>Registrazione completata</h3>
@@ -338,52 +360,63 @@ def auth_forgot():
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FDC Fantatorneo - Reset Password</title>
+        <title>FDCFANTA ✦ FDC Fantatorneo - Reset Password</title>
         <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-            .wrap { width: 100%; max-width: 360px; }
-            .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 24px; }
-            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; font-size: 14px; }
-            input::placeholder { color: #64748b; }
-            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-            button.primary { background: #2563eb; color: #fff; }
-            button.primary:hover { background: #1d4ed8; }
-            button.secondary { background: #334155; color: #e2e8f0; }
-            button.secondary:hover { background: #475569; }
-            h2 { margin: 0 0 20px 0; font-size: 20px; }
-            .subtitle { margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5; }
-            .auth-link { margin-top: 16px; font-size: 13px; color: #cbd5e1; text-align: center; line-height: 1.5; }
-            .auth-link a { color: #60a5fa; text-decoration: none; font-weight: 700; cursor: pointer; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 380px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 18px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.28); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 14px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .subtitle { margin: 0 0 18px 0; font-size: 15px; color: var(--theme-muted); line-height: 1.6; }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
             .auth-link a:hover { text-decoration: underline; }
             .success-banner {
                 display: none;
-                background: linear-gradient(135deg, #0f766e, #0b5c49);
-                border: 1px solid #34d399;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #ecfeff;
+                color: var(--theme-text);
             }
-            .success-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .success-banner p { margin: 4px 0; font-size: 12px; }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
             .error-banner {
                 display: none;
-                background: linear-gradient(135deg, #7f1d1d, #b91c1c);
-                border: 1px solid #f87171;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #fee2e2;
+                color: var(--theme-text);
             }
-            .error-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .error-banner p { margin: 4px 0; font-size: 12px; }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
         </style>
     </head>
     <body>
         <div class="wrap">
             <div class="card">
-                <h2>Recupera Password</h2>
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Recupera Password</h2>
                 <p class="subtitle">Inserisci la tua email per ricevere un link di reset della password.</p>
                 
                 <div id="success-banner" class="success-banner">
@@ -473,54 +506,65 @@ def auth_reset_password():
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FDC Fantatorneo - Reset Password</title>
+        <title>FDCFANTA ✦ FDC Fantatorneo - Reset Password</title>
         <style>
+            :root {
+                --theme-sky: #33ccff;
+                --theme-pink: #ff80a8;
+                --theme-yellow: #ffd24d;
+                --theme-ink: #102033;
+                --theme-bg: #1a2333;
+                --theme-panel: rgba(31, 42, 61, 0.96);
+                --theme-border: rgba(255, 255, 255, 0.12);
+                --theme-text: #eef3fb;
+                --theme-muted: rgba(238, 243, 251, 0.72);
+            }
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-            .wrap { width: 100%; max-width: 360px; }
-            .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 24px; }
-            input { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; font-size: 14px; }
-            input::placeholder { color: #64748b; }
-            button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-            button.primary { background: #2563eb; color: #fff; }
-            button.primary:hover { background: #1d4ed8; }
-            button.secondary { background: #334155; color: #e2e8f0; }
-            button.secondary:hover { background: #475569; }
-            h2 { margin: 0 0 20px 0; font-size: 20px; }
-            .subtitle { margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5; }
-            .auth-link { margin-top: 16px; font-size: 13px; color: #cbd5e1; text-align: center; line-height: 1.5; }
-            .auth-link a { color: #60a5fa; text-decoration: none; font-weight: 700; cursor: pointer; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%), radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%), radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%), var(--theme-bg); color: var(--theme-text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+            .wrap { width: 100%; max-width: 560px; }
+            .card { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 22px; padding: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.30); }
+            input { width: 100%; box-sizing: border-box; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--theme-border); background: rgba(17,24,39,0.92); color: var(--theme-text); font-size: 16px; }
+            input::placeholder { color: rgba(238, 243, 251, 0.52); }
+            button { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 16px 18px; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; }
+            button.primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+            button.primary:hover { filter: brightness(1.05); }
+            button.secondary { background: rgba(255,255,255,0.10); color: var(--theme-text); border: 1px solid rgba(255,255,255,0.08); }
+            button.secondary:hover { background: rgba(255,255,255,0.14); }
+            h2 { margin: 0 0 24px 0; font-size: 32px; line-height: 1.05; color: var(--theme-sky); }
+            .subtitle { margin: 0 0 18px 0; font-size: 15px; color: var(--theme-muted); line-height: 1.6; }
+            .auth-link { margin-top: 18px; font-size: 14px; color: var(--theme-muted); text-align: center; line-height: 1.6; }
+            .auth-link a { color: var(--theme-yellow); text-decoration: none; font-weight: 700; cursor: pointer; }
             .auth-link a:hover { text-decoration: underline; }
             .success-banner {
                 display: none;
-                background: linear-gradient(135deg, #0f766e, #0b5c49);
-                border: 1px solid #34d399;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 210, 77, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #ecfeff;
+                color: var(--theme-text);
             }
-            .success-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .success-banner p { margin: 4px 0; font-size: 12px; }
+            .success-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .success-banner p { margin: 4px 0; font-size: 13px; }
             .error-banner {
                 display: none;
-                background: linear-gradient(135deg, #7f1d1d, #b91c1c);
-                border: 1px solid #f87171;
+                background: linear-gradient(135deg, rgba(255, 107, 122, 0.20), rgba(255, 142, 181, 0.14));
+                border: 1px solid rgba(255, 107, 122, 0.45);
                 border-radius: 12px;
-                padding: 12px;
+                padding: 16px;
                 margin-bottom: 16px;
-                color: #fee2e2;
+                color: var(--theme-text);
             }
-            .error-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
-            .error-banner p { margin: 4px 0; font-size: 12px; }
+            .error-banner h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+            .error-banner p { margin: 4px 0; font-size: 13px; }
             .info-banner {
                 display: none;
-                background: linear-gradient(135deg, #1e40af, #1e3a8a);
-                border: 1px solid #60a5fa;
+                background: linear-gradient(135deg, rgba(51, 204, 255, 0.16), rgba(255, 128, 168, 0.12));
+                border: 1px solid rgba(51, 204, 255, 0.40);
                 border-radius: 12px;
                 padding: 12px;
                 margin-bottom: 16px;
-                color: #dbeafe;
+                color: var(--theme-text);
             }
             .info-banner h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; }
             .info-banner p { margin: 4px 0; font-size: 12px; }
@@ -529,7 +573,7 @@ def auth_reset_password():
     <body>
         <div class="wrap">
             <div class="card">
-                <h2>Imposta Nuova Password</h2>
+                <h2><span style="display:inline-block; padding:6px 14px; border-radius:999px; background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 12px;">FDCFANTA ✦</span><br>Imposta Nuova Password</h2>
                 <p class="subtitle">Inserisci la tua nuova password per completare il reset.</p>
                 
                 <div id="info-banner" class="info-banner">

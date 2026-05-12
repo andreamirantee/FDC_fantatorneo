@@ -34,6 +34,8 @@ from ..policies import (
 from ..schemas import (
     AdminUpdateParticipantRequest,
     AdminUpdateTeamRequest,
+    AdminAssignBonusRequest,
+    AdminRemoveBonusRequest,
     BuyParticipantRequest,
     MarketOperationResult,
     MarketTransactionItem,
@@ -129,6 +131,56 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
             current_team_score = int(team_res.data[0].get("score") or 0)
             new_team_score = max(0, current_team_score + points_delta)
             client.table("teams").update({"score": new_team_score}).eq("id", team_id).execute()
+
+
+def _get_active_team_ids_for_participant(client, participant_id: int) -> list[int]:
+    """Restituisce i team che possiedono attivamente la squadra (released_at NULL)."""
+    ownership_res = (
+        client.table("team_participants_history")
+        .select("team_id")
+        .eq("participant_id", participant_id)
+        .is_("released_at", "null")
+        .execute()
+    )
+    return [int(row.get("team_id")) for row in (ownership_res.data or []) if row.get("team_id") is not None]
+
+
+def _insert_bonus_rows(
+    client,
+    team_ids: list[int],
+    participant_id: int,
+    bonus_name: str,
+    points: int,
+    reason: str | None,
+    sport: str | None,
+) -> list[int]:
+    """Inserisce bonus per ogni team_id e ritorna gli ID delle righe inserite."""
+    if not team_ids:
+        return []
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    payload = [
+        {
+            "team_id": team_id,
+            "participant_id": participant_id,
+            "name": bonus_name,
+            "points": points,
+            "reason": reason,
+            "sport": sport,
+            "awarded_at": now_iso,
+            "is_active": True,
+        }
+        for team_id in team_ids
+    ]
+    try:
+        print(f"[_insert_bonus_rows] Inserting {len(payload)} bonus rows for participant {participant_id}, teams {team_ids}")
+        res = client.table("bonus").insert(payload).execute()
+        inserted_ids = [int(row.get("id")) for row in (res.data or []) if row.get("id") is not None]
+        print(f"[_insert_bonus_rows] Inserted {len(inserted_ids)} rows, res.data: {res.data}")
+        return inserted_ids
+    except Exception as e:
+        print(f"[_insert_bonus_rows] Insert failed: {e}")
+        raise
 
 
 def _apply_match_stats(client, squad_id: int, sport: str | None, points_delta: int, scored: int, conceded: int, result: str = "win", stat_delta: int = 1) -> None:
@@ -486,6 +538,245 @@ def get_sport_structure(sport_key: str, client=Depends(get_supabase_client)):
 def get_volley_structure(client=Depends(get_supabase_client)):
     """Compatibilità retroattiva per la struttura pallavolo."""
     return _build_sport_structure(client, "pallavolo")
+
+
+@router.post("/admin/bonus")
+def admin_assign_bonus(
+    payload: AdminAssignBonusRequest,
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None),
+):
+    """Assegna un bonus/malus: aggiorna score squadra e registra in tabella bonus."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    participant_res = (
+        client.table("participants")
+        .select("id, score, role")
+        .eq("id", payload.participant_id)
+        .limit(1)
+        .execute()
+    )
+    if not participant_res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
+
+    participant = participant_res.data[0]
+    team_ids = _get_active_team_ids_for_participant(client, payload.participant_id)
+    print(f"[admin_assign_bonus] Team IDs for participant {payload.participant_id}: {team_ids}")
+    if not team_ids:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No team owns this participant; bonus not recorded",
+        )
+
+    current_score = int(participant.get("score") or 0)
+    new_score = max(0, current_score + int(payload.points))
+    bonus_name = (payload.name or "Bonus").strip() or "Bonus"
+    bonus_reason = payload.reason or bonus_name
+    bonus_sport = payload.sport or participant.get("role")
+
+    inserted_ids: list[int] = []
+    try:
+        inserted_ids = _insert_bonus_rows(
+            client,
+            team_ids,
+            payload.participant_id,
+            bonus_name,
+            int(payload.points),
+            bonus_reason,
+            bonus_sport,
+        )
+        print(
+            f"[admin_assign_bonus] Inserted {len(inserted_ids)} bonus rows for participant {payload.participant_id}"
+        )
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to insert bonus rows")
+
+    if not inserted_ids:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No bonus rows inserted - check team ownership")
+
+    try:
+        client.table("participants").update({"score": new_score}).eq("id", payload.participant_id).execute()
+    except Exception:
+        # Rollback bonus rows if score update fails.
+        try:
+            client.table("bonus").delete().in_("id", inserted_ids).execute()
+        except Exception:
+            pass
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update participant score")
+
+    return {
+        "status": "ok",
+        "participant_id": payload.participant_id,
+        "updated_score": new_score,
+        "team_ids": team_ids,
+        "bonus_rows": len(inserted_ids),
+        "bonus_ids": inserted_ids,
+    }
+
+
+@router.get("/admin/bonus")
+def admin_list_bonus(
+    participant_id: int,
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None),
+):
+    """Lista bonus/malus attivi per una squadra (admin)."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    try:
+        res = (
+            client.table("bonus")
+            .select("id, team_id, participant_id, name, points, reason, sport, awarded_at, is_active")
+            .eq("participant_id", participant_id)
+            .eq("is_active", True)
+            .order("awarded_at", desc=True)
+            .execute()
+        )
+        return res.data or []
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load bonuses")
+
+
+@router.post("/admin/bonus/remove")
+def admin_remove_bonus(
+    payload: AdminRemoveBonusRequest,
+    client=Depends(get_supabase_client),
+    x_admin_token: str = Header(None),
+):
+    """Rimuove un bonus/malus: aggiorna score e cancella il bonus dalla tabella."""
+    if x_admin_token != "a3f9c4b8de":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin token required")
+
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Supabase client not available")
+
+    removed_ids: list[int] = []
+
+    if payload.bonus_id is not None:
+        bonus_res = (
+            client.table("bonus")
+            .select("id, participant_id, points, is_active")
+            .eq("id", payload.bonus_id)
+            .limit(1)
+            .execute()
+        )
+        if not bonus_res.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bonus not found")
+
+        bonus_row = bonus_res.data[0]
+        participant_id = int(bonus_row.get("participant_id") or 0)
+        points = int(bonus_row.get("points") or 0)
+
+        participant_res = (
+            client.table("participants")
+            .select("id, score")
+            .eq("id", participant_id)
+            .limit(1)
+            .execute()
+        )
+        if not participant_res.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
+
+        current_score = int(participant_res.data[0].get("score") or 0)
+        new_score = max(0, current_score - points)
+
+        try:
+            delete_res = client.table("bonus").delete().eq("id", payload.bonus_id).execute()
+            if not delete_res.data:
+                # Verifica esplicita: se la riga esiste ancora, la cancellazione non e' riuscita
+                check_res = (
+                    client.table("bonus")
+                    .select("id")
+                    .eq("id", payload.bonus_id)
+                    .limit(1)
+                    .execute()
+                )
+                if check_res.data:
+                    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Bonus not removed")
+            removed_ids.append(int(payload.bonus_id))
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete bonus")
+
+        try:
+            client.table("participants").update({"score": new_score}).eq("id", participant_id).execute()
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update participant score")
+
+        return {
+            "status": "ok",
+            "participant_id": participant_id,
+            "updated_score": new_score,
+            "removed_bonus": len(removed_ids),
+        }
+
+    if payload.participant_id is None or payload.name is None or payload.points is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing bonus removal data")
+
+    participant_res = (
+        client.table("participants")
+        .select("id, score")
+        .eq("id", payload.participant_id)
+        .limit(1)
+        .execute()
+    )
+    if not participant_res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
+
+    participant = participant_res.data[0]
+    current_score = int(participant.get("score") or 0)
+    new_score = max(0, current_score - int(payload.points))
+
+    team_ids = _get_active_team_ids_for_participant(client, payload.participant_id)
+    bonus_name = (payload.name or "Bonus").strip() or "Bonus"
+
+    for team_id in team_ids:
+        try:
+            bonus_query = (
+                client.table("bonus")
+                .select("id, is_active")
+                .eq("team_id", team_id)
+                .eq("participant_id", payload.participant_id)
+                .eq("name", bonus_name)
+                .eq("points", int(payload.points))
+                .eq("is_active", True)
+            )
+            if payload.reason:
+                bonus_query = bonus_query.eq("reason", payload.reason)
+
+            bonus_res = bonus_query.order("awarded_at", desc=True).limit(1).execute()
+            if bonus_res.data:
+                bonus_id = bonus_res.data[0].get("id")
+                if bonus_id is not None:
+                    try:
+                        delete_res = client.table("bonus").delete().eq("id", bonus_id).execute()
+                        if delete_res.data:
+                            removed_ids.append(int(bonus_id))
+                    except Exception:
+                        continue
+        except Exception:
+            continue
+
+    try:
+        client.table("participants").update({"score": new_score}).eq("id", payload.participant_id).execute()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update participant score")
+
+    return {
+        "status": "ok",
+        "participant_id": payload.participant_id,
+        "updated_score": new_score,
+        "removed_bonus": len(removed_ids),
+    }
 
 
 @router.post("/ranking/reset", status_code=status.HTTP_200_OK)

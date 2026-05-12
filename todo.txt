@@ -1,16 +1,10 @@
-logica 3 2 1 padel.
-filtro per crea partita, per cui se metto calcio filtra solo le squadre di calcio.
 
 
-
-aggiungere casella per i bonus
-
-modifica sezione il mio team per vedere statistiche avanzate 
-
-
-rendere sito mobile ready
+rimuovere bug da home
 
 
 cambiare colori
 
 comprare dominio
+
+sendgrid

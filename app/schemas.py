@@ -190,6 +190,11 @@ class UpdateTeamScore(BaseModel):
     score: int
 
 
+class UpdateTeamName(BaseModel):
+    """Richiesta per aggiornare il nome del team."""
+    name: str
+
+
 class MatchResult(BaseModel):
     """Richiesta per registrare risultato partita."""
     home_squad_id: int  # ID squadra home
@@ -216,6 +221,24 @@ class AdminUpdateParticipantRequest(BaseModel):
     sets_won: int | None = None
     sets_lost: int | None = None
     composed_of: str | None = None
+
+
+class AdminAssignBonusRequest(BaseModel):
+    """Richiesta admin per assegnare bonus/malus a una squadra."""
+    participant_id: int
+    name: str
+    points: int
+    reason: str | None = None
+    sport: str | None = None
+
+
+class AdminRemoveBonusRequest(BaseModel):
+    """Richiesta admin per rimuovere un bonus/malus da una squadra."""
+    bonus_id: int | None = None
+    participant_id: int | None = None
+    name: str | None = None
+    points: int | None = None
+    reason: str | None = None
 
 
 class AdminUpdateTeamRequest(BaseModel):

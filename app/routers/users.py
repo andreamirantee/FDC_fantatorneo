@@ -129,6 +129,9 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                 for row in bonus_rows:
                     if not isinstance(row, dict):
                         continue
+                    is_active = row.get("is_active")
+                    if is_active is False:
+                        continue
                     try:
                         pts = int(row.get("points") or 0)
                     except Exception:
@@ -146,7 +149,7 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                             "participant_id": participant_id,
                             "participant_name": participant_name,
                             "awarded_at": row.get("awarded_at"),
-                            "is_active": bool(row.get("is_active", True)),
+                            "is_active": bool(is_active) if is_active is not None else True,
                         }
                     )
 

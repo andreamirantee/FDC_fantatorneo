@@ -33,78 +33,126 @@ def serve_admin_panel():
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Admin - FDC Fantatorneo</title>
 	<style>
+		:root {
+			--theme-sky: #33ccff;
+			--theme-pink: #ff80a8;
+			--theme-yellow: #ffd24d;
+			--theme-ink: #102033;
+			--theme-bg: #1a2333;
+			--theme-panel: rgba(31, 42, 61, 0.96);
+			--theme-border: rgba(255, 255, 255, 0.12);
+			--theme-text: #eef3fb;
+			--theme-muted: rgba(238, 243, 251, 0.72);
+		}
 		* { margin: 0; padding: 0; box-sizing: border-box; }
+		html { -webkit-text-size-adjust: 100%; }
 		body {
 			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-			background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-			color: #e5e7eb;
+			background:
+				radial-gradient(circle at top left, rgba(51, 204, 255, 0.12), transparent 36%),
+				radial-gradient(circle at top right, rgba(255, 128, 168, 0.10), transparent 32%),
+				radial-gradient(circle at bottom center, rgba(255, 210, 77, 0.08), transparent 34%),
+				var(--theme-bg);
+			color: var(--theme-text);
 			min-height: 100vh;
 			padding: 20px;
+			line-height: 1.4;
+			-webkit-tap-highlight-color: transparent;
 		}
-		.container { max-width: 1800px; margin: 0 auto; }
+		.container { max-width: 1800px; margin: 0 auto; width: 100%; }
 		.header {
-			background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-			color: white;
+			background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 52%, var(--theme-yellow) 100%);
+			color: var(--theme-ink);
 			padding: 30px;
-			border-radius: 12px;
+			border-radius: 16px;
 			margin-bottom: 30px;
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
+			box-shadow: 0 20px 60px rgba(0,0,0,0.28);
 		}
 		.header h1 { font-size: 2em; }
-		.auth-section { background: rgba(0,0,0,0.3); padding: 15px 20px; border-radius: 8px; display: flex; gap: 10px; align-items: center; }
-		.auth-section input { padding: 8px 12px; border: 1px solid #4b5563; background: #1f2937; color: white; border-radius: 4px; }
-		.auth-section button { padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
-		.auth-section button:hover { background: #059669; }
-		.auth-status { padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; display: none; }
-		.auth-status.success { background: #d1fae5; color: #065f46; display: block; }
-		.auth-status.error { background: #fee2e2; color: #991b1b; display: block; }
+		.auth-section { background: rgba(255,255,255,0.12); padding: 15px 20px; border-radius: 12px; display: flex; gap: 10px; align-items: center; }
+		.auth-section input { padding: 8px 12px; border: 1px solid rgba(16, 32, 51, 0.14); background: rgba(255,255,255,0.92); color: var(--theme-ink); border-radius: 8px; }
+		.auth-section button { padding: 8px 16px; background: linear-gradient(135deg, var(--theme-pink) 0%, #ff9ac0 100%); color: var(--theme-ink); border: none; border-radius: 999px; cursor: pointer; font-weight: 700; box-shadow: 0 8px 18px rgba(16, 32, 51, 0.12); }
+		.auth-section button:hover { background: linear-gradient(135deg, #ff8eb5 0%, #ffb4d0 100%); }
+		button, input, select { touch-action: manipulation; }
+		.auth-status { padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: none; }
+		.auth-status.success { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35); display: block; }
+		.auth-status.error { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); display: block; }
 
 		.content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-		.panel { background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 25px; }
-		.panel h2 { color: #7c3aed; margin-bottom: 20px; font-size: 1.5em; }
+		.panel { background: var(--theme-panel); border: 1px solid var(--theme-border); border-radius: 16px; padding: 25px; box-shadow: 0 14px 40px rgba(0,0,0,0.18); }
+		.panel h2 { color: var(--theme-sky); margin-bottom: 20px; font-size: 1.5em; }
 		.form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
-		.form-group label { font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 5px; }
-		.form-group input, .form-group select { padding: 10px 12px; border: 1px solid #374151; background: #111827; color: #e5e7eb; border-radius: 6px; font-size: 13px; }
+		.form-group label { font-size: 13px; font-weight: 600; color: var(--theme-muted); margin-bottom: 5px; }
+		.form-group input, .form-group select { padding: 10px 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(17, 24, 39, 0.92); color: var(--theme-text); border-radius: 10px; font-size: 13px; }
 		.btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; width: 100%; }
-		.btn-primary { background: #7c3aed; color: white; }
-		.btn-primary:hover { background: #6d28d9; }
-		.btn-danger { background: #ef4444; color: white; }
-		.btn-danger:hover { background: #dc2626; }
+		.btn-primary { background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 100%); color: var(--theme-ink); }
+		.btn-primary:hover { filter: brightness(1.05); }
+		.btn-danger { background: linear-gradient(135deg, #ff6b7a 0%, #ff8eb5 100%); color: var(--theme-ink); }
+		.btn-danger:hover { filter: brightness(1.03); }
 		.status { margin-top: 15px; padding: 12px; border-radius: 6px; font-size: 13px; display: none; }
-		.status.success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; display: block; }
-		.status.error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; display: block; }
+		.status.success { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35); display: block; }
+		.status.error { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); display: block; }
 
 		table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-		thead { background: rgba(124, 58, 237, 0.1); }
-		th { padding: 12px; text-align: left; font-weight: 600; font-size: 12px; color: #7c3aed; text-transform: uppercase; border-bottom: 1px solid #374151; }
-		td { padding: 12px; border-bottom: 1px solid #374151; font-size: 13px; }
-		tr:hover { background: rgba(124, 58, 237, 0.05); }
+		thead { background: rgba(51, 204, 255, 0.10); }
+		th { padding: 12px; text-align: left; font-weight: 700; font-size: 12px; color: var(--theme-sky); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.10); }
+		td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.10); font-size: 13px; }
+		tr:hover { background: rgba(255, 128, 168, 0.06); }
 
 		.admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-		.admin-table th { background: rgba(124, 58, 237, 0.2); }
+		.admin-table th { background: rgba(51, 204, 255, 0.14); }
 		.admin-table input {
 			width: 100%;
 			padding: 6px 8px;
-			border: 1px solid #374151;
-			background: #0f172a;
-			color: #e5e7eb;
-			border-radius: 6px;
+			border: 1px solid rgba(255,255,255,0.12);
+			background: rgba(17, 24, 39, 0.92);
+			color: var(--theme-text);
+			border-radius: 8px;
 			font-size: 12px;
 		}
-		.admin-table input:focus { outline: none; border-color: #7c3aed; }
+		.admin-table input:focus { outline: none; border-color: var(--theme-sky); }
 		.btn-save {
-			background: #10b981;
-			color: white;
+			background: linear-gradient(135deg, var(--theme-sky) 0%, #7ee8ff 100%);
+			color: var(--theme-ink);
 			border: none;
-			border-radius: 6px;
+			border-radius: 999px;
 			padding: 6px 12px;
 			font-size: 12px;
 			font-weight: 600;
 			cursor: pointer;
 		}
-		.btn-save:hover { background: #059669; }
+		.btn-save:hover { filter: brightness(1.05); }
+
+		/* Tab buttons per fasi */
+		.fase-tabs {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 24px;
+			flex-wrap: wrap;
+		}
+		.fase-tab-btn {
+			padding: 10px 20px;
+			border: 2px solid rgba(255,255,255,0.12);
+			background: rgba(17,24,39,0.92);
+			color: var(--theme-muted);
+			border-radius: 8px;
+			cursor: pointer;
+			font-weight: 600;
+			font-size: 14px;
+			transition: all 0.2s ease;
+		}
+		.fase-tab-btn:hover {
+			border-color: var(--theme-sky);
+			color: var(--theme-text);
+		}
+		.fase-tab-btn.active {
+			background: linear-gradient(135deg, var(--theme-sky) 0%, var(--theme-pink) 52%, var(--theme-yellow) 100%);
+			color: var(--theme-ink);
+			border-color: transparent;
+		}
 
 		.full-width { grid-column: 1 / -1; }
 		.section-block { margin-bottom: 24px; }
@@ -161,14 +209,25 @@ def serve_admin_panel():
 		
 		@media (max-width: 768px) {
 			body { padding: 12px; }
-			.header { padding: 18px; flex-direction: column; align-items: flex-start; gap: 12px; }
-			.header h1 { font-size: 1.5em; }
+			.header { padding: 18px; flex-direction: column; align-items: flex-start; gap: 12px; border-radius: 12px; }
+			.header h1 { font-size: 1.5em; line-height: 1.15; }
 			.header p { font-size: 13px; }
-			.auth-section { width: 100%; flex-wrap: wrap; }
+			.auth-section { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
 			.auth-section label { width: 100%; }
-			.auth-section input, .auth-section button { width: 100%; }
-			.panel { padding: 16px; }
+			.auth-section input, .auth-section button { width: 100%; min-height: 44px; }
+			.fase-tabs { flex-direction: column; gap: 8px; }
+			.fase-tab-btn { width: 100%; min-height: 44px; }
+			.section-block { margin-bottom: 18px; }
+			.section-title { font-size: 18px; }
+			.section-hint { font-size: 12px; }
+			.card-grid { grid-template-columns: 1fr; gap: 12px; }
+			.bonus-grid { grid-template-columns: 1fr !important; }
+			.flex-selector-container { justify-content: flex-start; align-items: stretch; }
+			.panel { padding: 16px; border-radius: 12px; }
 			.panel h2 { font-size: 1.25em; }
+			.form-group { margin-bottom: 16px; }
+			.form-group input, .form-group select { min-height: 44px; font-size: 16px; }
+			.btn { font-size: 14px; padding: 12px 16px; min-height: 44px; }
 			th, td { padding: 8px; font-size: 12px; }
 			
 			/* Table scrollable */
@@ -222,11 +281,21 @@ def serve_admin_panel():
 				padding: 4px 6px !important;
 			}
 			
-			.btn { 
+			/* Make stacked blocks fit iPhone screens without sideways scrolling */
+			.content,
+			.card-grid,
+			.bonus-grid {
+				grid-template-columns: 1fr;
+			}
+			.auth-section,
+			.flex-selector-container {
 				width: 100%;
-				font-size: 13px;
-				padding: 12px;
-				margin-bottom: 10px;
+			}
+			select,
+			input[type="text"],
+			input[type="password"],
+			input[type="number"] {
+				width: 100%;
 			}
 		}
 	</style>
@@ -247,6 +316,13 @@ def serve_admin_panel():
 		</div>
 
 		<div id="adminContent" style="display: none;">
+			<!-- Tab fasi torneo -->
+			<div class="fase-tabs">
+				<button class="fase-tab-btn active" onclick="switchFase(1, event)">Fase 1</button>
+				<button class="fase-tab-btn" onclick="switchFase(2, event)">Fase 2</button>
+				<button class="fase-tab-btn" onclick="switchFase(3, event)">Fase 3</button>
+			</div>
+
 			<div class="section-block">
 				<div class="section-title">Squadre</div>
 				<div class="section-hint">Gestione completa squadre: aggiungi, modifica, elimina.</div>
@@ -402,7 +478,7 @@ def serve_admin_panel():
 						<form onsubmit="recordMatch(event)">
 							<div class="form-group">
 								<label>Sport partita</label>
-								<select id="matchSport" required onchange="updateMatchLogicPreview()">
+								<select id="matchSport" required onchange="updateMatchLogicPreview(); updateMatchSquadFilters();">
 									<option value="Calcio">Calcio</option>
 									<option value="Pallavolo">Pallavolo</option>
 									<option value="Padel">Padel</option>
@@ -410,7 +486,7 @@ def serve_admin_panel():
 							</div>
 							<div class="form-group">
 								<label>Squadra A</label>
-								<select id="homeSquad" required><option value="">Seleziona squadra</option></select>
+								<select id="homeSquad" required onchange="updateMatchSquadFilters()"><option value="">Seleziona squadra</option></select>
 							</div>
 							<div class="form-group">
 								<label>Squadra B</label>
@@ -418,7 +494,7 @@ def serve_admin_panel():
 							</div>
 							<div class="form-group">
 								<label>Fase</label>
-								<select id="matchStage" required>
+								<select id="matchStage" required onchange="updateMatchSquadFilters()">
 									<option value="group">Girone</option>
 									<option value="final">Finale</option>
 								</select>
@@ -592,6 +668,7 @@ def serve_admin_panel():
 		let adminToken = null;
 		let lastSquads = [];
 		let lastMatches = [];
+		let matchSquads = [];
 		const sportCosts = { 'Calcio': 35, 'Pallavolo': 25, 'Padel': 20 };
 
 		function getAdminToken() {
@@ -617,7 +694,33 @@ def serve_admin_panel():
 				loadMatches();
 				loadRankingView();
 				updateMatchLogicPreview();
+				
+				// Carica la fase salvata e attiva il bottone corrispondente
+				const savedFase = parseInt(localStorage.getItem('tournamentFase') || '1');
+				const faseBtns = document.querySelectorAll('.fase-tab-btn');
+				faseBtns.forEach((btn, index) => {
+					if (index + 1 === savedFase) {
+						btn.classList.add('active');
+					}
+				});
 			}
+		}
+
+		// Gestisce la selezione delle fasi (mutually exclusive)
+		function switchFase(faseNumber, event) {
+			// Rimuovi classe active da tutti i bottoni
+			document.querySelectorAll('.fase-tab-btn').forEach(btn => {
+				btn.classList.remove('active');
+			});
+			
+			// Aggiungi classe active al bottone cliccato
+			if (event && event.target) {
+				event.target.classList.add('active');
+			}
+			
+			// Salva fase su localStorage per comunicare a market_test.py
+			localStorage.setItem('tournamentFase', faseNumber);
+			console.log('Fase selezionata:', faseNumber);
 		}
 
 		function authenticateAdmin() {
@@ -706,6 +809,47 @@ def serve_admin_panel():
 			const metricWin = sport === 'Pallavolo' || sport === 'Padel' ? 'set vinti' : 'gol fatti';
 			const metricLose = sport === 'Pallavolo' || sport === 'Padel' ? 'set persi' : 'gol subiti';
 			el.innerHTML = `Logica ${sport}: A ${home}-${away} B → A ${p.home} punti, ${home} ${metricWin}, ${away} ${metricLose}; B ${p.away} punti, ${away} ${metricWin}, ${home} ${metricLose}.`;
+		}
+
+		function getMatchSquadRole(squad) {
+			return String(squad?.match_role || squad?.role || '').toLowerCase();
+		}
+
+		function getMatchSquadGroup(squad) {
+			return String(squad?.match_group || squad?.group_code || '').toUpperCase();
+		}
+
+		function renderMatchSquadOptions(targetId, squads, selectedId = null) {
+			const defaultOpt = '<option value="">Seleziona squadra</option>';
+			const options = squads.map(s => `<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
+			const el = document.getElementById(targetId);
+			if (!el) return;
+			el.innerHTML = defaultOpt + options;
+			if (selectedId) {
+				el.value = String(selectedId);
+			}
+		}
+
+		function updateMatchSquadFilters() {
+			const sport = (document.getElementById('matchSport')?.value || '').toLowerCase();
+			const stage = document.getElementById('matchStage')?.value || 'group';
+			const homeEl = document.getElementById('homeSquad');
+			const awayEl = document.getElementById('awaySquad');
+			if (!homeEl || !awayEl) return;
+
+			const homeId = Number(homeEl.value || 0) || null;
+			const homeSquad = matchSquads.find(s => Number(s.id) === Number(homeId));
+			const homeGroup = homeSquad ? getMatchSquadGroup(homeSquad) : '';
+
+			const sportFiltered = matchSquads.filter(s => getMatchSquadRole(s) === sport);
+			renderMatchSquadOptions('homeSquad', sportFiltered, homeId);
+
+			const awayFiltered = sportFiltered.filter(s => {
+				if (homeId && Number(s.id) === Number(homeId)) return false;
+				if (stage === 'final' || !homeGroup) return true;
+				return getMatchSquadGroup(s) === homeGroup;
+			});
+			renderMatchSquadOptions('awaySquad', awayFiltered);
 		}
 
 		async function updateModifyClassificaView() {
@@ -1170,6 +1314,18 @@ def serve_admin_panel():
 				return;
 			}
 
+			const stageGroup = stage !== 'final';
+			if (stageGroup) {
+				const homeSquad = matchSquads.find(s => Number(s.id) === Number(homeId));
+				const awaySquad = matchSquads.find(s => Number(s.id) === Number(awayId));
+				const homeGroup = homeSquad ? getMatchSquadGroup(homeSquad) : '';
+				const awayGroup = awaySquad ? getMatchSquadGroup(awaySquad) : '';
+				if (homeGroup && awayGroup && homeGroup !== awayGroup) {
+					showStatus('matchStatus', '✗ Nel girone le squadre devono essere dello stesso gruppo', 'error');
+					return;
+				}
+			}
+
 			try {
 				const res = await fetch(`${API_BASE}/market/match`, {
 					method: 'POST',
@@ -1394,9 +1550,24 @@ def serve_admin_panel():
 
 		async function loadSquads() {
 			try {
-				const res = await fetch(`${API_BASE}/participants`);
+				const [res, rankingRes] = await Promise.all([
+					fetch(`${API_BASE}/participants`),
+					fetch(`${API_BASE}/market/ranking`)
+				]);
 				const squads = await res.json();
+				const ranking = rankingRes.ok ? await rankingRes.json() : [];
 				lastSquads = squads;
+				const rankingMap = new Map((Array.isArray(ranking) ? ranking : []).map(r => [
+					Number(r.id),
+					{
+						match_role: String(r.sport || r.role || '').toLowerCase(),
+						match_group: String(r.group_code || '').toUpperCase(),
+					},
+				]));
+				matchSquads = (Array.isArray(squads) ? squads : []).map(s => ({
+					...s,
+					...(rankingMap.get(Number(s.id)) || {}),
+				}));
 
 				const options = squads.map(s => `<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
 				const defaultOpt = '<option value="">Seleziona squadra</option>';
@@ -1414,6 +1585,8 @@ def serve_admin_panel():
 					document.getElementById('editSquadCost').value = picked.cost || 0;
 					document.getElementById('editSquadComposedOf').value = picked.composed_of || '';
 				};
+
+				updateMatchSquadFilters();
 			} catch (err) {
 				console.error('Errore caricamento squadre:', err);
 			}
@@ -1430,10 +1603,35 @@ def serve_admin_panel():
 		}
 
 		// Bonus/Malus management
-		let currentBonusData = { type: '', description: '', points: 0, participantId: null, allParticipants: [] };
+		const bonusDefinitions = [
+			{ type: 'outfit', name: 'Abbigliamento', points: 20 },
+			{ type: 'esultanza', name: 'Esultanza', points: 20 },
+			{ type: 'puntuale', name: 'Puntuale', points: 30 },
+			{ type: 'vittoria', name: 'Vittoria', points: 50 },
+			{ type: 'pareggio', name: 'Pareggio', points: 10 },
+			{ type: 'torneo', name: 'Torneo', points: 100 },
+			{ type: 'scarpe_colore', name: 'Scarpe colorate', points: 15 },
+			{ type: 'rigore', name: 'Rigore segnato', points: 20 },
+			{ type: 'ginocchiere', name: 'Ginocchiere', points: 15 },
+			{ type: 'gol_tanti', name: '3+ gol', points: 20 },
+			{ type: 'ritardo', name: 'In ritardo', points: -30 },
+			{ type: 'fallo', name: 'Fallo', points: -25 },
+			{ type: 'sconfitta', name: 'Sconfitta', points: -35 },
+			{ type: 'gol_zero', name: '0 gol', points: -20 },
+			{ type: 'rigore_subito', name: 'Rigore subito', points: -15 },
+			{ type: 'litigio', name: 'Litigio', points: -40 },
+			{ type: 'set_zero', name: '0 punti set', points: -20 },
+			{ type: 'padel_zero', name: '0 punti padel', points: -20 }
+		];
+		const bonusTypeLabels = bonusDefinitions.reduce((acc, item) => {
+			acc[item.type] = item.name;
+			return acc;
+		}, {});
+		let currentBonusData = { type: '', description: '', points: 0, participantId: null, displayName: '', allParticipants: [] };
 
 		async function openBonusModal(bonusType, description, points) {
-			currentBonusData = { type: bonusType, description, points, participantId: null, allParticipants: [] };
+			const displayName = bonusTypeLabels[bonusType] || description || bonusType || 'Bonus';
+			currentBonusData = { type: bonusType, description, points, participantId: null, displayName, allParticipants: [] };
 			document.getElementById('bonusModalTitle').textContent = `${description} (${points > 0 ? '+' : ''}${points} pt)`;
 			document.getElementById('bonusSportFilter').value = '';
 			document.getElementById('bonusSearchInput').value = '';
@@ -1501,20 +1699,26 @@ def serve_admin_panel():
 
 			try {
 				const participant = currentBonusData.allParticipants.find(p => p.id === currentBonusData.participantId);
-				const currentScore = participant.score || 0;
-				const newScore = currentScore + currentBonusData.points;
+				const sport = (participant?.sport || participant?.role || '').toString().toLowerCase();
+				const payload = {
+					participant_id: currentBonusData.participantId,
+					name: currentBonusData.displayName || currentBonusData.description || 'Bonus',
+					points: currentBonusData.points,
+					reason: currentBonusData.description,
+					sport: sport
+				};
 
-				const res = await fetch(`${API_BASE}/market/admin/participants/${currentBonusData.participantId}`, {
+				const res = await fetch(`${API_BASE}/market/admin/bonus`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 						'X-Admin-Token': token
 					},
-					body: JSON.stringify({ score: newScore })
+					body: JSON.stringify(payload)
 				});
 
 				if (res.ok) {
-					alert(`✓ ${currentBonusData.description} assegnato a ${participant.name}`);
+					alert(`✓ ${currentBonusData.description} assegnato a ${participant?.name || 'Squadra'}`);
 					closeBonusModal();
 					loadAdminData();
 				} else {
@@ -1531,28 +1735,23 @@ def serve_admin_panel():
 		}
 
 		// Rimozione Bonus/Malus
-		let currentRemoveBonusData = { participantId: null, bonusType: '', bonusPoints: 0, allParticipants: [], bonusDefinitions: [
-			{ type: 'outfit', name: 'Abbigliamento', points: 20 },
-			{ type: 'esultanza', name: 'Esultanza', points: 20 },
-			{ type: 'puntuale', name: 'Puntuale', points: 30 },
-			{ type: 'vittoria', name: 'Vittoria', points: 50 },
-			{ type: 'pareggio', name: 'Pareggio', points: 10 },
-			{ type: 'torneo', name: 'Torneo', points: 100 },
-			{ type: 'scarpe_colore', name: 'Scarpe colorate', points: 15 },
-			{ type: 'rigore', name: 'Rigore segnato', points: 20 },
-			{ type: 'ginocchiere', name: 'Ginocchiere', points: 15 },
-			{ type: 'gol_tanti', name: '3+ gol', points: 20 },
-			{ type: 'ritardo', name: 'In ritardo', points: -30 },
-			{ type: 'fallo', name: 'Fallo', points: -25 },
-			{ type: 'sconfitta', name: 'Sconfitta', points: -35 },
-			{ type: 'gol_zero', name: '0 gol', points: -20 },
-			{ type: 'rigore_subito', name: 'Rigore subito', points: -15 },
-			{ type: 'litigio', name: 'Litigio', points: -40 },
-			{ type: 'set_zero', name: '0 punti set', points: -20 },
-			{ type: 'padel_zero', name: '0 punti padel', points: -20 }
-		]};
+		let currentRemoveBonusData = {
+			participantId: null,
+			bonusId: null,
+			bonusName: '',
+			bonusPoints: 0,
+			bonusReason: '',
+			allParticipants: [],
+			availableBonuses: []
+		};
 
 		async function openRemoveBonusModal() {
+			currentRemoveBonusData.participantId = null;
+			currentRemoveBonusData.bonusId = null;
+			currentRemoveBonusData.bonusName = '';
+			currentRemoveBonusData.bonusPoints = 0;
+			currentRemoveBonusData.bonusReason = '';
+			currentRemoveBonusData.availableBonuses = [];
 			document.getElementById('removeBonusSportFilter').value = '';
 			document.getElementById('removeBonusSearchInput').value = '';
 
@@ -1610,27 +1809,64 @@ def serve_admin_panel():
 				return;
 			}
 
-			const html = currentRemoveBonusData.bonusDefinitions.map(b => `
-				<div onclick="selectRemoveBonusType('${b.type}', ${b.points})" style="padding: 12px; background: #111827; margin-bottom: 8px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#0f172a';" onmouseout="this.style.borderColor='transparent'; this.style.background='#111827';">
-					<strong>${b.name}</strong> (${b.points > 0 ? '+' : ''}${b.points} pt)
-				</div>
-			`).join('');
+			const token = getAdminToken();
+			if (!token) {
+				alert('✗ Admin token required');
+				return;
+			}
 
-			document.getElementById('removeBonusTypeList').innerHTML = html;
-			document.getElementById('removeBonusTypeModal').style.display = 'flex';
+			currentRemoveBonusData.bonusId = null;
+			currentRemoveBonusData.bonusName = '';
+			currentRemoveBonusData.bonusPoints = 0;
+			currentRemoveBonusData.bonusReason = '';
+			currentRemoveBonusData.availableBonuses = [];
+
+			fetch(`${API_BASE}/market/admin/bonus?participant_id=${currentRemoveBonusData.participantId}`, {
+				headers: { 'X-Admin-Token': token }
+			})
+				.then(res => res.ok ? res.json() : [])
+				.then(bonuses => {
+					currentRemoveBonusData.availableBonuses = Array.isArray(bonuses) ? bonuses : [];
+					const html = currentRemoveBonusData.availableBonuses.length
+						? currentRemoveBonusData.availableBonuses.map((b, idx) => {
+							const sign = b.points > 0 ? '+' : '';
+							const reason = b.reason ? ` - ${b.reason}` : '';
+							const teamLabel = b.team_id ? ` (Team ${b.team_id})` : '';
+							const timeLabel = b.awarded_at ? ` • ${new Date(b.awarded_at).toLocaleString('it-IT')}` : '';
+							return `
+								<div data-index="${idx}" onclick="selectRemoveBonusType(${idx})" style="padding: 12px; background: #111827; margin-bottom: 8px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#0f172a';" onmouseout="this.style.borderColor='transparent'; this.style.background='#111827';">
+									<strong>${b.name || 'Bonus'}</strong> (${sign}${b.points} pt)${teamLabel}${reason}
+									<div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">ID: ${b.id}${timeLabel}</div>
+								</div>
+							`;
+						}).join('')
+						: '<div style="padding: 12px; color: #9ca3af;">Nessun bonus attivo per questa squadra</div>';
+
+					document.getElementById('removeBonusTypeList').innerHTML = html;
+					document.getElementById('removeBonusTypeModal').style.display = 'flex';
+				})
+				.catch(err => {
+					console.error('Errore caricamento bonus:', err);
+					document.getElementById('removeBonusTypeList').innerHTML = '<div style="padding: 12px; color: #fca5a5;">Errore caricamento bonus</div>';
+					document.getElementById('removeBonusTypeModal').style.display = 'flex';
+				});
 		}
 
-		function selectRemoveBonusType(bonusType, bonusPoints) {
-			currentRemoveBonusData.bonusType = bonusType;
-			currentRemoveBonusData.bonusPoints = bonusPoints;
+		function selectRemoveBonusType(index) {
+			const bonus = currentRemoveBonusData.availableBonuses[index];
+			if (!bonus) return;
+			currentRemoveBonusData.bonusId = bonus.id;
+			currentRemoveBonusData.bonusName = bonus.name || 'Bonus';
+			currentRemoveBonusData.bonusPoints = Number(bonus.points || 0);
+			currentRemoveBonusData.bonusReason = bonus.reason || '';
 			// Highlight selected
-			document.querySelectorAll('#removeBonusTypeList div').forEach(el => {
-				el.style.borderColor = el.textContent.includes(bonusType) ? '#ef4444' : 'transparent';
+			document.querySelectorAll('#removeBonusTypeList div[data-index]').forEach(el => {
+				el.style.borderColor = Number(el.dataset.index) === index ? '#ef4444' : 'transparent';
 			});
 		}
 
 		async function confirmRemoveBonus() {
-			if (!currentRemoveBonusData.bonusType) {
+			if (!currentRemoveBonusData.bonusId) {
 				alert('Seleziona un bonus/malus');
 				return;
 			}
@@ -1643,21 +1879,19 @@ def serve_admin_panel():
 
 			try {
 				const participant = currentRemoveBonusData.allParticipants.find(p => p.id === currentRemoveBonusData.participantId);
-				const currentScore = participant.score || 0;
-				const newScore = currentScore - currentRemoveBonusData.bonusPoints;
+				const payload = { bonus_id: currentRemoveBonusData.bonusId };
 
-				const res = await fetch(`${API_BASE}/market/admin/participants/${currentRemoveBonusData.participantId}`, {
+				const res = await fetch(`${API_BASE}/market/admin/bonus/remove`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 						'X-Admin-Token': token
 					},
-					body: JSON.stringify({ score: newScore })
+					body: JSON.stringify(payload)
 				});
 
 				if (res.ok) {
-					const bonusName = currentRemoveBonusData.bonusDefinitions.find(b => b.type === currentRemoveBonusData.bonusType)?.name || 'Bonus';
-					alert(`✓ ${bonusName} eliminato da ${participant.name}`);
+					alert(`✓ ${currentRemoveBonusData.bonusName || 'Bonus'} eliminato da ${participant?.name || 'Squadra'}`);
 					closeRemoveBonusTypeModal();
 					closeRemoveBonusModal();
 					loadAdminData();
