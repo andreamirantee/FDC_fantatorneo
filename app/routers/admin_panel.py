@@ -557,9 +557,9 @@ def serve_admin_panel():
 		<div id="adminContent" style="display: none;">
 			<!-- Tab fasi torneo -->
 			<div class="fase-tabs">
-				<button class="fase-tab-btn active" onclick="switchFase(1, event)">Fase 1</button>
-				<button class="fase-tab-btn" onclick="switchFase(2, event)">Fase 2</button>
-				<button class="fase-tab-btn" onclick="switchFase(3, event)">Fase 3</button>
+				<button class="fase-tab-btn active" onclick="switchFase(1, event)">Mercato Aperto</button>
+				<button class="fase-tab-btn" onclick="switchFase(2, event)">Mercato Chiuso</button>
+				<button class="fase-tab-btn" onclick="switchFase(3, event)">Fase Finale</button>
 			</div>
 
 			<div class="section-block">
@@ -1238,83 +1238,178 @@ def serve_admin_panel():
 				searchCountEl.textContent = `${filtered.length} risultato${filtered.length === 1 ? '' : 'i'}`;
 			}
 
-			if (isMobile) {
-				let html = '<div class="participant-card-grid">';
-				filtered.forEach(p => {
-					const sportValue = p.sport || p.role || 'N/A';
-					const draws = p.draws || 0;
-					const groupCode = (p.group_code || '').toUpperCase();
+		// Salva i dati filtrati per accesso nelle funzioni di editing
+		window.lastParticipants = participants;
 
-					html += `
-						<div class="participant-card" data-sport="${sportValue}" data-participant-id="${p.id}">
-							<div class="participant-card-header">
-								<div class="participant-card-title">${p.name || 'N/A'}</div>
-								<div class="participant-card-meta">ID ${p.id}</div>
+		let html = `
+			<table class="admin-table" style="table-layout: fixed; width: 100%;">
+				<thead>
+					<tr>
+						<th style="width: 40%;">Nome</th>
+						<th style="width: 30%;">Sport</th>
+						<th style="width: 30%;">Punti</th>
+					</tr>
+				</thead>
+				<tbody>
+		`;
+
+		filtered.forEach(p => {
+			const sport = p.sport || p.role || 'N/A';
+			html += `
+				<tr data-sport="${sport}" data-participant-id="${p.id}" onclick="openParticipantEditor(${p.id})" style="cursor: pointer;">
+					<td style="word-break: break-word;">${p.name || 'N/A'}</td>
+					<td style="text-align: center;">${sport}</td>
+					<td style="text-align: center; font-weight: bold;">${p.points || p.score || 0}</td>
+				</tr>
+			`;
+		});
+
+		html += `</tbody></table>`;
+		if (filtered.length === 0 && sport) {
+			html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
+		}
+		document.getElementById('adminParticipantsContainer').innerHTML = html;
+		// Apri editor dettagliato per un partecipante
+		function openParticipantEditor(participantId) {
+			const participant = window.lastParticipants?.find(p => p.id === participantId);
+			if (!participant) return;
+
+			// Chiudi editor precedente se aperto
+			closeParticipantEditor();
+
+			// Calcola differenza reti
+			const diffReti = (participant.goals_for || 0) - (participant.goals_against || 0);
+
+			const editorHtml = `
+				<div class="participant-editor-overlay" onclick="if(event.target===this) closeParticipantEditor()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+					<div class="participant-editor-panel" style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+							<h3 style="margin: 0; font-size: 20px;">Modifica: ${participant.name}</h3>
+							<button onclick="closeParticipantEditor()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
+						</div>
+
+						<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Nome</label>
+								<input type="text" id="editor_name" value="${participant.name || ''}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
 							</div>
-							<div class="participant-card-fields">
-								<div class="participant-field">
-									<label>V</label>
-									<input class="classifica-field" type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0">
-								</div>
-								<div class="participant-field">
-									<label>Pareggi</label>
-									<input class="classifica-field" type="number" value="${draws}" id="draws_${p.id}" min="0">
-								</div>
-								<div class="participant-field">
-									<label>S</label>
-									<input class="classifica-field" type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0">
-								</div>
-								<div class="participant-field">
-									<label>Punti</label>
-									<input class="classifica-field" type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0">
-								</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Sport</label>
+								<input type="text" value="${participant.sport || participant.role || 'N/A'}" disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; color: #666; font-size: 14px;">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Partite Giocate</label>
+								<input type="number" id="editor_played" value="${participant.matches_played || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Punti</label>
+								<input type="number" id="editor_points" value="${participant.points || participant.score || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Vittorie</label>
+								<input type="number" id="editor_wins" value="${participant.wins || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Pareggi</label>
+								<input type="number" id="editor_draws" value="${participant.draws || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Sconfitte</label>
+								<input type="number" id="editor_losses" value="${participant.losses || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Gol Fatti</label>
+								<input type="number" id="editor_gf" value="${participant.goals_for || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Gol Subiti</label>
+								<input type="number" id="editor_ga" value="${participant.goals_against || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
+							</div>
+							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Differenza Reti</label>
+								<input type="number" id="editor_diff" value="${diffReti}" disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; color: #666; font-size: 14px;">
 							</div>
 						</div>
-					`;
-				});
-				html += '</div>';
-				if (filtered.length === 0 && sport) {
-					html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
-				}
-				document.getElementById('adminParticipantsContainer').innerHTML = html;
-				return;
-			}
 
-			let html = `
-				<table class="admin-table" style="table-layout: fixed; width: 100%;">
-					<thead>
-						<tr>
-							<th style="width: 32%;">Nome</th>
-							<th style="width: 14%;">Vittorie</th>
-							<th style="width: 14%;">Pareggi</th>
-							<th style="width: 14%;">Sconfitte</th>
-							<th style="width: 14%;">Punti</th>
-						</tr>
-					</thead>
-					<tbody>
+						<div style="display: flex; gap: 10px; justify-content: flex-end;">
+							<button class="btn-cancel" onclick="closeParticipantEditor()" style="padding: 10px 20px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-weight: 600; color: #333;">Annulla</button>
+							<button class="btn-save" onclick="saveParticipantEditor(${participantId})" style="padding: 10px 20px; border: none; background: #ff80a8; border-radius: 4px; cursor: pointer; font-weight: 600; color: white;">Salva Modifiche</button>
+						</div>
+					</div>
+				</div>
 			`;
 
-			filtered.forEach(p => {
-				const sport = p.sport || p.role || 'N/A';
-				html += `
-					<tr data-sport="${sport}" data-participant-id="${p.id}">
-							<td style="word-break: break-word;">${p.name || 'N/A'}</td>
-							<td><input class="classifica-field" type="number" value="${p.wins || 0}" id="wins_${p.id}" min="0"></td>
-							<td><input class="classifica-field" type="number" value="${p.draws || 0}" id="draws_${p.id}" min="0"></td>
-							<td><input class="classifica-field" type="number" value="${p.losses || 0}" id="losses_${p.id}" min="0"></td>
-							<td><input class="classifica-field" type="number" value="${p.points || p.score || 0}" id="points_${p.id}" min="0"></td>
-					</tr>
-				`;
-			});
-
-				html += `</tbody></table>`;
-			if (filtered.length === 0 && sport) {
-				html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
-			}
-			document.getElementById('adminParticipantsContainer').innerHTML = html;
+			document.body.insertAdjacentHTML('beforeend', editorHtml);
 		}
 
-		function renderAdminTeamsTable(teams) {
+		// Chiudi editor
+		function closeParticipantEditor() {
+			const overlay = document.querySelector('.participant-editor-overlay');
+			if (overlay) overlay.remove();
+		}
+
+		// Salva modifiche del partecipante all'API
+		async function saveParticipantEditor(participantId) {
+			const name = document.getElementById('editor_name')?.value || '';
+			const points = parseInt(document.getElementById('editor_points')?.value || '0', 10);
+			const played = parseInt(document.getElementById('editor_played')?.value || '0', 10);
+			const wins = parseInt(document.getElementById('editor_wins')?.value || '0', 10);
+			const draws = parseInt(document.getElementById('editor_draws')?.value || '0', 10);
+			const losses = parseInt(document.getElementById('editor_losses')?.value || '0', 10);
+			const gf = parseInt(document.getElementById('editor_gf')?.value || '0', 10);
+			const ga = parseInt(document.getElementById('editor_ga')?.value || '0', 10);
+
+			try {
+				const response = await fetch(`${API_BASE}/market/admin/participants/${participantId}`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${localStorage.getItem('fdc_admin_token') || ''}`
+					},
+					body: JSON.stringify({
+						name: name,
+						score: points,
+						matches_played: played,
+						wins: wins,
+						draws: draws,
+						losses: losses,
+						goals_for: gf,
+						goals_against: ga
+					})
+				});
+
+				if (response.ok) {
+					// Aggiorna il dato locale
+					const participant = window.lastParticipants?.find(p => p.id === participantId);
+					if (participant) {
+						participant.name = name;
+						participant.points = points;
+						participant.score = points;
+						participant.matches_played = played;
+						participant.wins = wins;
+						participant.draws = draws;
+						participant.losses = losses;
+						participant.goals_for = gf;
+						participant.goals_against = ga;
+					}
+
+					// Chiudi editor e ricarica tabella
+					closeParticipantEditor();
+					const sport = document.querySelector(`[data-participant-id="${participantId}"]`)?.getAttribute('data-sport');
+					const subview = document.getElementById('rankingSportSubViewSelect')?.value || 'all';
+					renderAdminParticipantsTable(window.lastParticipants, sport, subview);
+					// Mostra messaggio di successo
+					alert('✓ Modifiche salvate con successo');
+				} else {
+					alert('✗ Errore nel salvataggio. Verifica i dati.');
+				}
+			} catch (error) {
+				console.error('Save error:', error);
+				alert('✗ Errore di connessione.');
+			}
+		}
+
+	function renderAdminTeamsTable(teams) {
 			let html = `
 				<table class="admin-table">
 					<thead>
