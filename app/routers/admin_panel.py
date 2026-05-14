@@ -447,6 +447,21 @@ def serve_admin_panel():
 				height: 34px;
 				padding: 4px 6px !important;
 			}
+			#adminParticipantsContainer {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+			#adminParticipantsContainer .admin-table {
+				display: table !important;
+				width: 100% !important;
+				min-width: 0 !important;
+				overflow: visible !important;
+			}
+			#adminParticipantsContainer .admin-table th,
+			#adminParticipantsContainer .admin-table td {
+				white-space: normal;
+				word-break: break-word;
+			}
 			.ranking-table {
 				display: table;
 				width: 100%;
@@ -514,11 +529,6 @@ def serve_admin_panel():
 			.admin-table td:nth-child(7) { min-width: 78px; }
 			.admin-table th:nth-child(9),
 			.admin-table td:nth-child(9) { min-width: 82px; }
-			
-			/* Hide the table edit view on iPhone and use cards instead */
-			#adminParticipantsContainer table.admin-table {
-				display: none !important;
-			}
 			
 			/* Make stacked blocks fit iPhone screens without sideways scrolling */
 			.content,
@@ -598,6 +608,10 @@ def serve_admin_panel():
 					<div class="panel">
 						<h2>✏️ Modifica Squadra</h2>
 						<form onsubmit="updateSquad(event)">
+							<div class="form-group">
+								<label>Cerca squadra</label>
+								<input type="text" id="editSquadSearch" placeholder="Cerca per nome squadra, partecipanti o composed_of..." oninput="filterEditSquadOptions()">
+							</div>
 							<div class="form-group">
 								<label>Squadra</label>
 								<select id="editSquadSelect" required>
@@ -1247,30 +1261,59 @@ def serve_admin_panel():
 		// Salva i dati filtrati per accesso nelle funzioni di editing
 		window.lastParticipants = participants;
 
-		let html = `
-			<table class="admin-table" style="table-layout: fixed; width: 100%;">
-				<thead>
-					<tr>
-						<th style="width: 40%;">Nome</th>
-						<th style="width: 30%;">Sport</th>
-						<th style="width: 30%;">Punti</th>
-					</tr>
-				</thead>
-				<tbody>
+		let html = '';
+		if (isMobile) {
+			html = '<div class="participant-card-grid">';
+			filtered.forEach(p => {
+				const sport = p.sport || p.role || 'N/A';
+				const group = (p.group_code || '').toUpperCase() || 'N/A';
+				html += `
+					<div class="participant-card" data-sport="${sport}" data-participant-id="${p.id}" onclick="openParticipantEditor(${p.id})" style="cursor: pointer;">
+						<div class="participant-card-header">
+							<div class="participant-card-title">${p.name || 'N/A'}</div>
+							<div class="participant-card-meta">${sport}<br>Girone ${group}</div>
+						</div>
+						<div class="participant-card-fields">
+							<div class="participant-field">
+								<label>Punti</label>
+								<strong>${p.points || p.score || 0}</strong>
+							</div>
+							<div class="participant-field">
+								<label>ID</label>
+								<strong>${p.id}</strong>
+							</div>
+						</div>
+						${p.composed_of ? `<div style="margin-top: 10px; font-size: 12px; color: #cbd5e1; line-height: 1.35;"><strong>Composed_of:</strong> ${p.composed_of}</div>` : ''}
+					</div>
+				`;
+			});
+			html += '</div>';
+		} else {
+			html = `
+				<table class="admin-table" style="table-layout: fixed; width: 100%;">
+					<thead>
+						<tr>
+							<th style="width: 40%;">Nome</th>
+							<th style="width: 30%;">Sport</th>
+							<th style="width: 30%;">Punti</th>
+						</tr>
+					</thead>
+					<tbody>
 		`;
 
-		filtered.forEach(p => {
-			const sport = p.sport || p.role || 'N/A';
-			html += `
-				<tr data-sport="${sport}" data-participant-id="${p.id}" onclick="openParticipantEditor(${p.id})" style="cursor: pointer;">
-					<td style="word-break: break-word;">${p.name || 'N/A'}</td>
-					<td style="text-align: center;">${sport}</td>
-					<td style="text-align: center; font-weight: bold;">${p.points || p.score || 0}</td>
-				</tr>
-			`;
-		});
+			filtered.forEach(p => {
+				const sport = p.sport || p.role || 'N/A';
+				html += `
+					<tr data-sport="${sport}" data-participant-id="${p.id}" onclick="openParticipantEditor(${p.id})" style="cursor: pointer;">
+						<td style="word-break: break-word;">${p.name || 'N/A'}</td>
+						<td style="text-align: center;">${sport}</td>
+						<td style="text-align: center; font-weight: bold;">${p.points || p.score || 0}</td>
+					</tr>
+				`;
+			});
 
-		html += `</tbody></table>`;
+			html += `</tbody></table>`;
+		}
 		if (filtered.length === 0 && sport) {
 			html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
 		}
@@ -1954,6 +1997,7 @@ def serve_admin_panel():
 				document.getElementById('awaySquad').innerHTML = defaultOpt + options;
 				document.getElementById('deleteSquadSelect').innerHTML = defaultOpt + options;
 				document.getElementById('editSquadSelect').innerHTML = defaultOpt + options;
+					window.lastSquads = squads;
 
 				const sel = document.getElementById('editSquadSelect');
 				sel.onchange = function() {
@@ -1970,6 +2014,22 @@ def serve_admin_panel():
 				console.error('Errore caricamento squadre:', err);
 			}
 		}
+
+			function filterEditSquadOptions() {
+				const search = String(document.getElementById('editSquadSearch')?.value || '').trim().toLowerCase();
+				const select = document.getElementById('editSquadSelect');
+				const squads = Array.isArray(window.lastSquads) ? window.lastSquads : [];
+				const selectedValue = select?.value || '';
+				const filtered = !search ? squads : squads.filter(s => {
+					const name = String(s.name || '').toLowerCase();
+					const role = String(s.role || '').toLowerCase();
+					const composed = String(s.composed_of || '').toLowerCase();
+					return name.includes(search) || role.includes(search) || composed.includes(search);
+				});
+				const options = filtered.map(s => `<option value="${s.id}" ${String(s.id) === selectedValue ? 'selected' : ''}>${s.name} (${s.role})</option>`).join('');
+				select.innerHTML = '<option value="">Seleziona squadra</option>' + options;
+				select.value = filtered.some(s => String(s.id) === selectedValue) ? selectedValue : '';
+			}
 
 		async function loadTeams() {
 			try {
