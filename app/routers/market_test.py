@@ -1436,10 +1436,9 @@ def serve_home():
                 const teamName = (teamRow && teamRow.name)
                     ? teamRow.name
                     : (displayName ? `${{displayName}}'s team` : `Team ${{teamId}}`);
-                const totalScore = roster.reduce((sum, item) => sum + (item.participant_score || 0), 0);
+                const totalScore = Number(teamRow?.score ?? payload?.team_score ?? 0);
                 const bonusItems = Array.isArray(payload?.bonus_items) ? payload.bonus_items : [];
                 const bonusTotal = Number(payload?.bonus_total || 0);
-                const grandTotal = totalScore + bonusTotal;
                 const listRows = roster.length
                     ? roster.map(item => {{
                         const participantId = Number(item.participant_id);
@@ -1496,15 +1495,17 @@ def serve_home():
                     <div id="teamNameStatus" class="status" style="margin-top: 10px;"></div>
                     <div class="score-grid">
                         <div class="score-metric">
-                            <span class="label">Punteggio roster</span>
+                            <span class="label">Punteggio team</span>
                             <div class="value">${{totalScore}}</div>
                         </div>
-                        <!-- Sezione 'Bonus totale' rimossa come richiesto -->
+                        <div class="score-metric">
+                            <span class="label">Bonus attivi</span>
+                            <div class="value">${{bonusTotal}}</div>
+                        </div>
                         <div class="score-metric">
                             <span class="label">Participant nel team</span>
                             <div class="value">${{roster.length}}</div>
                         </div>
-                        <!-- Totale complessivo rimosso come richiesto -->
                     </div>
                     <div class="my-score-list">
                         <h4 style="padding:12px; margin:0; font-size:15px;">Il mio team</h4>

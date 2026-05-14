@@ -1852,7 +1852,7 @@ def serve_admin_panel():
 			}
 
 			const currentScore = parseInt(selectedSquad.score || 0);
-			const newScore = Math.max(0, currentScore - pointsToRemove);
+			const newScore = currentScore - pointsToRemove;
 			const confirmed = window.confirm(`Rimuovere ${pointsToRemove} punti da ${selectedSquad.name}? Punteggio attuale: ${currentScore}, nuovo punteggio: ${newScore}`);
 			if (!confirmed) {
 				showStatus('removePointsStatus', 'Operazione annullata', 'error');
@@ -2270,11 +2270,10 @@ def serve_admin_panel():
 						? currentRemoveBonusData.availableBonuses.map((b, idx) => {
 							const sign = b.points > 0 ? '+' : '';
 							const reason = b.reason ? ` - ${b.reason}` : '';
-							const teamLabel = b.team_id ? ` (Team ${b.team_id})` : '';
 							const timeLabel = b.awarded_at ? ` • ${new Date(b.awarded_at).toLocaleString('it-IT')}` : '';
 							return `
 								<div data-index="${idx}" onclick="selectRemoveBonusType(${idx})" style="padding: 12px; background: #111827; margin-bottom: 8px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#0f172a';" onmouseout="this.style.borderColor='transparent'; this.style.background='#111827';">
-									<strong>${b.name || 'Bonus'}</strong> (${sign}${b.points} pt)${teamLabel}${reason}
+										<strong>${b.name || 'Bonus'}</strong> (${sign}${b.points} pt)${reason}
 									<div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">ID: ${b.id}${timeLabel}</div>
 								</div>
 							`;

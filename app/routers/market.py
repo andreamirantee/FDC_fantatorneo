@@ -129,39 +129,24 @@ def _distribute_squad_points(client, squad_id: int, points_delta: int) -> None:
         team_res = client.table("teams").select("id, score").eq("id", team_id).limit(1).execute()
         if team_res.data:
             current_team_score = int(team_res.data[0].get("score") or 0)
-            new_team_score = max(0, current_team_score + points_delta)
+            new_team_score = current_team_score + points_delta
             client.table("teams").update({"score": new_team_score}).eq("id", team_id).execute()
 
 
-def _get_active_team_ids_for_participant(client, participant_id: int) -> list[int]:
-    """Restituisce i team che possiedono attivamente la squadra (released_at NULL)."""
-    ownership_res = (
-        client.table("team_participants_history")
-        .select("team_id")
-        .eq("participant_id", participant_id)
-        .is_("released_at", "null")
-        .execute()
-    )
-    return [int(row.get("team_id")) for row in (ownership_res.data or []) if row.get("team_id") is not None]
-
-
-def _insert_bonus_rows(
+def _insert_bonus_row(
     client,
-    team_ids: list[int],
     participant_id: int,
     bonus_name: str,
     points: int,
     reason: str | None,
     sport: str | None,
 ) -> list[int]:
-    """Inserisce bonus per ogni team_id e ritorna gli ID delle righe inserite."""
-    if not team_ids:
-        return []
+    """Inserisce un bonus legato al participant e ritorna l'ID della riga inserita."""
 
     now_iso = datetime.now(timezone.utc).isoformat()
     payload = [
         {
-            "team_id": team_id,
+            "team_id": None,
             "participant_id": participant_id,
             "name": bonus_name,
             "points": points,
@@ -170,16 +155,15 @@ def _insert_bonus_rows(
             "awarded_at": now_iso,
             "is_active": True,
         }
-        for team_id in team_ids
     ]
     try:
-        print(f"[_insert_bonus_rows] Inserting {len(payload)} bonus rows for participant {participant_id}, teams {team_ids}")
+        print(f"[_insert_bonus_row] Inserting bonus row for participant {participant_id}")
         res = client.table("bonus").insert(payload).execute()
         inserted_ids = [int(row.get("id")) for row in (res.data or []) if row.get("id") is not None]
-        print(f"[_insert_bonus_rows] Inserted {len(inserted_ids)} rows, res.data: {res.data}")
+        print(f"[_insert_bonus_row] Inserted {len(inserted_ids)} rows, res.data: {res.data}")
         return inserted_ids
     except Exception as e:
-        print(f"[_insert_bonus_rows] Insert failed: {e}")
+        print(f"[_insert_bonus_row] Insert failed: {e}")
         raise
 
 
@@ -564,14 +548,6 @@ def admin_assign_bonus(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
 
     participant = participant_res.data[0]
-    team_ids = _get_active_team_ids_for_participant(client, payload.participant_id)
-    print(f"[admin_assign_bonus] Team IDs for participant {payload.participant_id}: {team_ids}")
-    if not team_ids:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No team owns this participant; bonus not recorded",
-        )
-
     current_score = int(participant.get("score") or 0)
     new_score = max(0, current_score + int(payload.points))
     bonus_name = (payload.name or "Bonus").strip() or "Bonus"
@@ -580,23 +556,20 @@ def admin_assign_bonus(
 
     inserted_ids: list[int] = []
     try:
-        inserted_ids = _insert_bonus_rows(
+        inserted_ids = _insert_bonus_row(
             client,
-            team_ids,
             payload.participant_id,
             bonus_name,
             int(payload.points),
             bonus_reason,
             bonus_sport,
         )
-        print(
-            f"[admin_assign_bonus] Inserted {len(inserted_ids)} bonus rows for participant {payload.participant_id}"
-        )
+        print(f"[admin_assign_bonus] Inserted {len(inserted_ids)} bonus rows for participant {payload.participant_id}")
     except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to insert bonus rows")
 
     if not inserted_ids:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No bonus rows inserted - check team ownership")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No bonus row inserted")
 
     try:
         client.table("participants").update({"score": new_score}).eq("id", payload.participant_id).execute()
@@ -612,7 +585,6 @@ def admin_assign_bonus(
         "status": "ok",
         "participant_id": payload.participant_id,
         "updated_score": new_score,
-        "team_ids": team_ids,
         "bonus_rows": len(inserted_ids),
         "bonus_ids": inserted_ids,
     }
@@ -691,7 +663,6 @@ def admin_remove_bonus(
         try:
             delete_res = client.table("bonus").delete().eq("id", payload.bonus_id).execute()
             if not delete_res.data:
-                # Verifica esplicita: se la riga esiste ancora, la cancellazione non e' riuscita
                 check_res = (
                     client.table("bonus")
                     .select("id")
@@ -736,35 +707,38 @@ def admin_remove_bonus(
     current_score = int(participant.get("score") or 0)
     new_score = max(0, current_score - int(payload.points))
 
-    team_ids = _get_active_team_ids_for_participant(client, payload.participant_id)
     bonus_name = (payload.name or "Bonus").strip() or "Bonus"
+    bonus_query = (
+        client.table("bonus")
+        .select("id, is_active, points")
+        .eq("participant_id", payload.participant_id)
+        .eq("name", bonus_name)
+        .eq("points", int(payload.points))
+        .eq("is_active", True)
+    )
+    if payload.reason:
+        bonus_query = bonus_query.eq("reason", payload.reason)
 
-    for team_id in team_ids:
-        try:
-            bonus_query = (
-                client.table("bonus")
-                .select("id, is_active")
-                .eq("team_id", team_id)
-                .eq("participant_id", payload.participant_id)
-                .eq("name", bonus_name)
-                .eq("points", int(payload.points))
-                .eq("is_active", True)
-            )
-            if payload.reason:
-                bonus_query = bonus_query.eq("reason", payload.reason)
+    try:
+        bonus_res = bonus_query.order("awarded_at", desc=True).execute()
+        bonus_rows = bonus_res.data or []
+        total_points_to_remove = 0
+        for bonus_row in bonus_rows:
+            bonus_id = bonus_row.get("id")
+            if bonus_id is None:
+                continue
+            try:
+                delete_res = client.table("bonus").delete().eq("id", bonus_id).execute()
+                if delete_res.data:
+                    removed_ids.append(int(bonus_id))
+                    total_points_to_remove += int(bonus_row.get("points") or 0)
+            except Exception:
+                continue
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load bonus rows")
 
-            bonus_res = bonus_query.order("awarded_at", desc=True).limit(1).execute()
-            if bonus_res.data:
-                bonus_id = bonus_res.data[0].get("id")
-                if bonus_id is not None:
-                    try:
-                        delete_res = client.table("bonus").delete().eq("id", bonus_id).execute()
-                        if delete_res.data:
-                            removed_ids.append(int(bonus_id))
-                    except Exception:
-                        continue
-        except Exception:
-            continue
+    current_score = int(participant.get("score") or 0)
+    new_score = max(0, current_score - total_points_to_remove)
 
     try:
         client.table("participants").update({"score": new_score}).eq("id", payload.participant_id).execute()

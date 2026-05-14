@@ -97,18 +97,37 @@ def read_me(current_user=Depends(get_current_user), client=Depends(get_supabase_
                 # non bloccare la risposta se il DB fallisce qui
                 pass
 
-            # Bonus team: restituisce elenco bonus e totale punti bonus.
+            # Bonus participant-owned: somma i bonus dei participant attualmente nel team.
             try:
+                team_participants_res = (
+                    client.table("team_participants_history")
+                    .select("participant_id")
+                    .eq("team_id", int(team_id))
+                    .is_("released_at", "null")
+                    .execute()
+                )
+                team_participant_ids = [
+                    int(row.get("participant_id"))
+                    for row in (team_participants_res.data or [])
+                    if row.get("participant_id") is not None
+                ]
+
+                if not team_participant_ids:
+                    result["bonus_items"] = []
+                    result["bonus_total"] = 0
+                    return result
+
                 bonus_res = (
                     client.table("bonus")
                     .select("id, name, points, reason, sport, participant_id, awarded_at, is_active")
-                    .eq("team_id", int(team_id))
+                    .in_("participant_id", team_participant_ids)
+                    .eq("is_active", True)
                     .order("awarded_at", desc=True)
                     .execute()
                 )
                 bonus_rows = bonus_res.data if bonus_res and getattr(bonus_res, "data", None) else []
 
-                # Recupera nomi delle squadre (participants) per i bonus
+                # Recupera nomi dei participants per i bonus
                 participant_ids = [row.get("participant_id") for row in bonus_rows if row.get("participant_id")]
                 participants_map = {}
                 if participant_ids:
