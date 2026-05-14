@@ -50,8 +50,17 @@ app.add_exception_handler(RateLimitExceeded, lambda request, exc: {"detail": "Ra
 app.add_middleware(SlowAPIMiddleware)
 
 # Middleware CORS: consente richieste frontend da origini configurate (es. FlutterFlow, localhost).
-# Origini configurate sono lette da variabile env CORS_ORIGINS (lista separata da virgole).
+# Se CORS_ORIGINS non è impostata, abilita i default locali per non bloccare lo sviluppo su localhost.
 origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
+if not origins:
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8000",
+    ]
 if origins:
     app.add_middleware(
         CORSMiddleware,

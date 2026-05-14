@@ -700,9 +700,7 @@ def serve_admin_panel():
 								</select>
 							</div>
 						</div>
-						<div style="margin-bottom: 10px;">
-							<button type="button" class="btn btn-primary" onclick="saveAllParticipantChanges()">Salva modifiche classifica</button>
-						</div>
+						<!-- Rimosso bottone di salvataggio globale modifiche classifica come richiesto -->
 						<div id="adminParticipantsContainer">Caricamento...</div>
 					</div>
 					<div>
@@ -906,7 +904,15 @@ def serve_admin_panel():
 	</div>
 
 	<script>
-		const API_BASE = '/api/v1';
+		const API_BASE = (() => {
+			const { protocol, hostname, port, origin } = window.location;
+			if (hostname === 'localhost' || hostname === '127.0.0.1') {
+				if (port && port !== '8000') {
+					return `${protocol}//${hostname}:8000/api/v1`;
+				}
+			}
+			return `${origin}/api/v1`;
+		})();
 		const ADMIN_TOKEN_STORAGE_KEY = 'fdc_admin_token';
 		let adminToken = null;
 		let lastSquads = [];
@@ -1269,6 +1275,7 @@ def serve_admin_panel():
 			html = `<p style="text-align:center; color:#9ca3af;">Nessuna squadra trovata per i filtri selezionati</p>`;
 		}
 		document.getElementById('adminParticipantsContainer').innerHTML = html;
+	}
 		// Apri editor dettagliato per un partecipante
 		function openParticipantEditor(participantId) {
 			const participant = window.lastParticipants?.find(p => p.id === participantId);
@@ -1277,8 +1284,7 @@ def serve_admin_panel():
 			// Chiudi editor precedente se aperto
 			closeParticipantEditor();
 
-			// Calcola differenza reti
-			const diffReti = (participant.goals_for || 0) - (participant.goals_against || 0);
+			const currentGroupCode = (participant.group_code || '').toUpperCase();
 
 			const editorHtml = `
 				<div class="participant-editor-overlay" onclick="if(event.target===this) closeParticipantEditor()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
@@ -1306,6 +1312,15 @@ def serve_admin_panel():
 								<input type="number" id="editor_points" value="${participant.points || participant.score || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
 							</div>
 							<div>
+								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Girone</label>
+								<select id="editor_group_code" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white;">
+									<option value="" ${currentGroupCode ? '' : 'selected'}>Nessuno</option>
+									<option value="A" ${currentGroupCode === 'A' ? 'selected' : ''}>A</option>
+									<option value="B" ${currentGroupCode === 'B' ? 'selected' : ''}>B</option>
+									<!-- Opzione 'F' rimossa dal popup Girone come richiesto -->
+								</select>
+							</div>
+							<div>
 								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Vittorie</label>
 								<input type="number" id="editor_wins" value="${participant.wins || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
 							</div>
@@ -1324,10 +1339,6 @@ def serve_admin_panel():
 							<div>
 								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Gol Subiti</label>
 								<input type="number" id="editor_ga" value="${participant.goals_against || 0}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" min="0">
-							</div>
-							<div>
-								<label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Differenza Reti</label>
-								<input type="number" id="editor_diff" value="${diffReti}" disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; color: #666; font-size: 14px;">
 							</div>
 						</div>
 
@@ -1358,13 +1369,15 @@ def serve_admin_panel():
 			const losses = parseInt(document.getElementById('editor_losses')?.value || '0', 10);
 			const gf = parseInt(document.getElementById('editor_gf')?.value || '0', 10);
 			const ga = parseInt(document.getElementById('editor_ga')?.value || '0', 10);
+			const groupCode = (document.getElementById('editor_group_code')?.value || '').trim().toUpperCase();
 
 			try {
+				const token = getAdminToken();
 				const response = await fetch(`${API_BASE}/market/admin/participants/${participantId}`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${localStorage.getItem('fdc_admin_token') || ''}`
+						'X-Admin-Token': token || ''
 					},
 					body: JSON.stringify({
 						name: name,
@@ -1373,6 +1386,7 @@ def serve_admin_panel():
 						wins: wins,
 						draws: draws,
 						losses: losses,
+						group_code: groupCode || null,
 						goals_for: gf,
 						goals_against: ga
 					})
@@ -1389,6 +1403,7 @@ def serve_admin_panel():
 						participant.wins = wins;
 						participant.draws = draws;
 						participant.losses = losses;
+						participant.group_code = groupCode || null;
 						participant.goals_for = gf;
 						participant.goals_against = ga;
 					}
