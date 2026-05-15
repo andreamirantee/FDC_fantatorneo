@@ -1436,7 +1436,7 @@ def serve_home():
                 const teamName = (teamRow && teamRow.name)
                     ? teamRow.name
                     : (displayName ? `${{displayName}}'s team` : `Team ${{teamId}}`);
-                const totalScore = Number(teamRow?.score ?? payload?.team_score ?? 0);
+                // team score removed: we rely on bonus totals instead
                 const bonusItems = Array.isArray(payload?.bonus_items) ? payload.bonus_items : [];
                 const bonusTotal = Number(payload?.bonus_total || 0);
                 const listRows = roster.length
@@ -1494,10 +1494,6 @@ def serve_home():
                     </div>
                     <div id="teamNameStatus" class="status" style="margin-top: 10px;"></div>
                     <div class="score-grid">
-                        <div class="score-metric">
-                            <span class="label">Punteggio team</span>
-                            <div class="value">${{totalScore}}</div>
-                        </div>
                         <div class="score-metric">
                             <span class="label">Bonus attivi</span>
                             <div class="value">${{bonusTotal}}</div>

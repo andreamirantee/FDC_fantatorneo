@@ -36,11 +36,51 @@ def list_teams(client=Depends(get_supabase_client)):
     try:
         response = (
             client.table("teams")
-            .select("id, name, owner_user_id, total_cost, score, balance_credits")
+            .select("id, name, owner_user_id, total_cost, balance_credits")
             .order("id")
             .execute()
         )
         rows = response.data or []
+        # Compute active bonuses per team by joining team_participants_history -> bonus
+        team_ids = [int(r.get("id")) for r in rows if r.get("id") is not None]
+        team_to_participants: dict[int, list[int]] = {tid: [] for tid in team_ids}
+        if team_ids:
+            try:
+                tph_res = (
+                    client.table("team_participants_history")
+                    .select("team_id, participant_id")
+                    .in_("team_id", team_ids)
+                    .is_("released_at", "null")
+                    .execute()
+                )
+                for row in (tph_res.data or []):
+                    tid = int(row.get("team_id") or 0)
+                    pid = int(row.get("participant_id") or 0)
+                    if tid and pid:
+                        team_to_participants.setdefault(tid, []).append(pid)
+            except Exception:
+                pass
+
+        # Gather all participant ids owned by teams and query active bonuses
+        all_pids = set()
+        for pids in team_to_participants.values():
+            for pid in pids:
+                all_pids.add(pid)
+        pid_to_bonus_count: dict[int, int] = {}
+        if all_pids:
+            try:
+                bonus_res = (
+                    client.table("bonus")
+                    .select("id, participant_id, is_active")
+                    .in_("participant_id", sorted(all_pids))
+                    .eq("is_active", True)
+                    .execute()
+                )
+                for b in (bonus_res.data or []):
+                    pid = int(b.get("participant_id") or 0)
+                    pid_to_bonus_count[pid] = pid_to_bonus_count.get(pid, 0) + 1
+            except Exception:
+                pass
         for row in rows:
             current_balance = row.get("balance_credits")
             total_cost = int(row.get("total_cost") or 0)
@@ -50,6 +90,13 @@ def list_teams(client=Depends(get_supabase_client)):
                     row["balance_credits"] = 100
                 except Exception:
                     pass
+        # Attach active_bonuses_count to rows
+        for row in rows:
+            tid = int(row.get("id") or 0)
+            count = 0
+            for pid in team_to_participants.get(tid, []):
+                count += pid_to_bonus_count.get(pid, 0)
+            row["active_bonuses_count"] = count
         return rows
     except Exception:
         # Degradazione corretta: se database o policy non pronti, ritorna lista vuota.

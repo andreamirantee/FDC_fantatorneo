@@ -1474,7 +1474,7 @@ def serve_admin_panel():
 						<tr>
 							<th>ID</th>
 							<th>Nome Team</th>
-							<th>Punteggio</th>
+							<th>Bonus attivi</th>
 							<th>Crediti</th>
 							<th>Azione</th>
 						</tr>
@@ -1487,7 +1487,7 @@ def serve_admin_panel():
 					<tr>
 						<td>${t.id}</td>
 						<td>${t.name || 'Team ' + t.id}</td>
-						<td><input type="number" value="${t.score || 0}" id="team_score_${t.id}" min="0"></td>
+						<td>${t.active_bonuses_count || 0}</td>
 						<td><input type="number" value="${t.balance_credits || 0}" id="team_credits_${t.id}" min="0"></td>
 						<td><button class="btn-save" onclick="saveTeamChanges(${t.id})">Salva</button></td>
 					</tr>
@@ -1514,9 +1514,9 @@ def serve_admin_panel():
 						<table class="admin-table" style="width: 100%;">
 							<thead>
 								<tr>
-									<th>Pos</th>
+									<td>Pos</td>
 									<th>Nome Team</th>
-									<th>Punteggio</th>
+									<th>Bonus attivi</th>
 									<th>Costo Totale</th>
 									<th>Crediti Disponibili</th>
 								</tr>
@@ -1526,7 +1526,7 @@ def serve_admin_panel():
 									<tr>
 										<td>${i + 1}</td>
 										<td>${t.name || 'Team ' + t.id}</td>
-										<td>${t.score || 0}</td>
+										<td>${t.active_bonuses_count || 0}</td>
 										<td>${t.total_cost || 0}</td>
 										<td>${t.balance_credits || 0}</td>
 									</tr>
@@ -1621,7 +1621,6 @@ def serve_admin_panel():
 				return;
 			}
 
-			const score = parseInt(document.getElementById(`team_score_${teamId}`).value) || 0;
 			const credits = parseInt(document.getElementById(`team_credits_${teamId}`).value) || 0;
 
 			try {
@@ -1632,7 +1631,6 @@ def serve_admin_panel():
 						'X-Admin-Token': token
 					},
 					body: JSON.stringify({
-						score: score,
 						balance_credits: credits
 					})
 				});
